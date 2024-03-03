@@ -10,9 +10,9 @@ var urls map[string]string
 func handler(rw http.ResponseWriter, rq *http.Request) {
 	switch rq.Method {
 	case http.MethodPost:
-		handlers.CreateShortUrlHandler(rw, rq, urls)
+		handlers.CreateShortURLHandler(rw, rq, urls)
 	case http.MethodGet:
-		handlers.GetShortUrlHandler(rw, rq, urls)
+		handlers.GetShortURLHandler(rw, rq, urls)
 	}
 }
 

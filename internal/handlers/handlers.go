@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func CreateShortUrlHandler(rw http.ResponseWriter, rq *http.Request, urls map[string]string) {
+func CreateShortURLHandler(rw http.ResponseWriter, rq *http.Request, urls map[string]string) {
 	reqBody, err := io.ReadAll(rq.Body)
 	if err != nil {
 		fmt.Printf("could not read request body: %s\n", err)
@@ -17,7 +17,7 @@ func CreateShortUrlHandler(rw http.ResponseWriter, rq *http.Request, urls map[st
 	reqBodyString := string(reqBody)
 	fmt.Printf("request body: %s\n", reqBodyString)
 	if reqBodyString != "" {
-		res, encodeErr := utils.EncodeUrl(reqBodyString)
+		res, encodeErr := utils.EncodeURL(reqBodyString)
 		if encodeErr == nil {
 			urls[res] = reqBodyString
 			rw.Header().Set("Content-Type", "text/plain")
@@ -34,11 +34,11 @@ func CreateShortUrlHandler(rw http.ResponseWriter, rq *http.Request, urls map[st
 	}
 }
 
-func GetShortUrlHandler(rw http.ResponseWriter, rq *http.Request, urls map[string]string) {
+func GetShortURLHandler(rw http.ResponseWriter, rq *http.Request, urls map[string]string) {
 	fmt.Printf("current session: %s\n", urls)
-	urlId := fmt.Sprintf("%s", rq.URL)[1:]
-	fmt.Printf("url id: %s\n", urlId)
-	if value, ok := urls[urlId]; ok {
+	urlID := rq.URL.String()[1:]
+	fmt.Printf("url id: %s\n", urlID)
+	if value, ok := urls[urlID]; ok {
 		fmt.Printf("found url: %s\n", value)
 		rw.Header().Set("Location", value)
 		rw.WriteHeader(http.StatusTemporaryRedirect)
