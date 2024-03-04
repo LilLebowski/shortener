@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -48,12 +47,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			CreateShortURLHandler(rw, rq, urls)
 
 			res := rw.Result()
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					panic(err)
-				}
-			}(res.Body)
+			defer res.Body.Close()
 			fmt.Printf("want code = %d StatusCode %d\n", test.want.code, res.StatusCode)
 			assert.Equal(t, test.want.code, res.StatusCode)
 		})
@@ -101,12 +95,7 @@ func TestGetShortURLHandler(t *testing.T) {
 			GetShortURLHandler(rw, rq, urls)
 
 			res := rw.Result()
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					panic(err)
-				}
-			}(res.Body)
+			defer res.Body.Close()
 			fmt.Printf("want code = %d StatusCode %d\n", test.want.code, res.StatusCode)
 			assert.Equal(t, test.want.code, res.StatusCode)
 		})
