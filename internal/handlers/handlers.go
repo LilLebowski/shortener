@@ -3,15 +3,28 @@ package handlers
 import (
 	"fmt"
 	"github.com/LilLebowski/shortener/internal/utils"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 )
 
-func CreateShortURLHandler(rw http.ResponseWriter, rq *http.Request, urls map[string]string) {
-	reqBody, err := io.ReadAll(rq.Body)
+var urls map[string]string
+
+func SetupRouter() *gin.Engine {
+	urls = make(map[string]string)
+
+	router := gin.Default()
+	router.GET("/:urlID", GetShortURLHandler)
+	router.POST("/", CreateShortURLHandler)
+
+	return router
+}
+
+func CreateShortURLHandler(ctx *gin.Context) {
+	reqBody, err := io.ReadAll(ctx.Request.Body)
 	if err != nil {
 		fmt.Printf("could not read request body: %s\n", err)
-		rw.WriteHeader(http.StatusBadRequest)
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	reqBodyString := string(reqBody)
@@ -20,30 +33,30 @@ func CreateShortURLHandler(rw http.ResponseWriter, rq *http.Request, urls map[st
 		res, encodeErr := utils.EncodeURL(reqBodyString)
 		if encodeErr == nil {
 			urls[res] = reqBodyString
-			rw.Header().Set("Content-Type", "text/plain")
-			rw.WriteHeader(http.StatusCreated)
-			_, writeErr := rw.Write([]byte("http://localhost:8080/" + res))
+			ctx.Writer.Header().Set("Content-Type", "text/plain")
+			ctx.Writer.WriteHeader(http.StatusCreated)
+			_, writeErr := ctx.Writer.Write([]byte("http://localhost:8080/" + res))
 			if writeErr != nil {
-				rw.WriteHeader(http.StatusBadRequest)
+				ctx.Writer.WriteHeader(http.StatusBadRequest)
 			}
 		} else {
-			rw.WriteHeader(http.StatusBadRequest)
+			ctx.Writer.WriteHeader(http.StatusBadRequest)
 		}
 	} else {
-		rw.WriteHeader(http.StatusBadRequest)
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
 	}
 }
 
-func GetShortURLHandler(rw http.ResponseWriter, rq *http.Request, urls map[string]string) {
+func GetShortURLHandler(ctx *gin.Context) {
 	fmt.Printf("current session: %s\n", urls)
-	urlID := rq.URL.String()[1:]
+	urlID := ctx.Param("urlID")
 	fmt.Printf("url id: %s\n", urlID)
 	if value, ok := urls[urlID]; ok {
 		fmt.Printf("found url: %s\n", value)
-		rw.Header().Set("Location", value)
-		rw.WriteHeader(http.StatusTemporaryRedirect)
+		ctx.Writer.Header().Set("Location", value)
+		ctx.Writer.WriteHeader(http.StatusTemporaryRedirect)
 	} else {
-		rw.Header().Set("Location", "Not found")
-		rw.WriteHeader(http.StatusBadRequest)
+		ctx.Writer.Header().Set("Location", "Not found")
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
 	}
 }

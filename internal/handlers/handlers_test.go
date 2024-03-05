@@ -9,8 +9,6 @@ import (
 	"testing"
 )
 
-var urls map[string]string
-
 func TestCreateShortURLHandler(t *testing.T) {
 	urls = make(map[string]string)
 
@@ -41,11 +39,11 @@ func TestCreateShortURLHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", test.name, test.param)
+			router := SetupRouter()
 			param := strings.NewReader(test.param)
 			rq := httptest.NewRequest(http.MethodPost, "/", param)
 			rw := httptest.NewRecorder()
-			CreateShortURLHandler(rw, rq, urls)
-
+			router.ServeHTTP(rw, rq)
 			res := rw.Result()
 			defer res.Body.Close()
 			fmt.Printf("want code = %d StatusCode %d\n", test.want.code, res.StatusCode)
@@ -55,8 +53,6 @@ func TestCreateShortURLHandler(t *testing.T) {
 }
 
 func TestGetShortURLHandler(t *testing.T) {
-	urls = make(map[string]string)
-
 	type want struct {
 		code int
 	}
@@ -67,7 +63,7 @@ func TestGetShortURLHandler(t *testing.T) {
 		want  want
 	}{
 		{
-			name:  "POST 1. body doesn't consist of data",
+			name:  "POST 1. URL doesn't exist",
 			urlID: "notfound",
 			url:   "",
 			want: want{
@@ -75,7 +71,7 @@ func TestGetShortURLHandler(t *testing.T) {
 			},
 		},
 		{
-			name:  "POST 2. body consist of data",
+			name:  "POST 2. URL exist",
 			urlID: "found",
 			url:   "https://ya.ru",
 			want: want{
@@ -86,14 +82,14 @@ func TestGetShortURLHandler(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			fmt.Printf("\n\nTest %v urlID %v url %v\n", test.name, test.urlID, test.url)
+			router := SetupRouter()
 			if test.urlID == "found" {
 				urls[test.urlID] = test.url
 			}
-			fmt.Printf("\n\nTest %v urlID %v url %v\n", test.name, test.urlID, test.url)
 			rq := httptest.NewRequest(http.MethodGet, "/"+test.urlID, nil)
 			rw := httptest.NewRecorder()
-			GetShortURLHandler(rw, rq, urls)
-
+			router.ServeHTTP(rw, rq)
 			res := rw.Result()
 			defer res.Body.Close()
 			fmt.Printf("want code = %d StatusCode %d\n", test.want.code, res.StatusCode)
