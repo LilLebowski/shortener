@@ -3,9 +3,11 @@ package config
 import (
 	"flag"
 	"github.com/joho/godotenv"
-	"log"
 	"os"
+	"regexp"
 )
+
+const projectDirName = "shortener"
 
 type ShortenerConfiguration struct {
 	ServerAddress string
@@ -13,9 +15,13 @@ type ShortenerConfiguration struct {
 }
 
 func LoadConfiguration() *ShortenerConfiguration {
-	err := godotenv.Load()
+	re := regexp.MustCompile(`^(.*` + projectDirName + `)`)
+	cwd, _ := os.Getwd()
+	rootPath := re.Find([]byte(cwd))
+
+	err := godotenv.Load(string(rootPath) + `/.env`)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		os.Exit(-1)
 	}
 	cfg := &ShortenerConfiguration{}
 	if cfg.ServerAddress = os.Getenv("SERVER_ADDRESS"); cfg.ServerAddress == "" {
