@@ -3,8 +3,8 @@ module github.com/LilLebowski/shortener
 go 1.22.0
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
-	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.9.0
 )
 

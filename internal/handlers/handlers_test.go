@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/LilLebowski/shortener/config"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 func TestCreateShortURLHandler(t *testing.T) {
 	urls = make(map[string]string)
+	cfg := config.LoadConfiguration()
 
 	type want struct {
 		code int
@@ -38,8 +40,8 @@ func TestCreateShortURLHandler(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fmt.Printf("\n\nTest %v Body %v\n", test.name, test.param)
-			router := SetupRouter()
+			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.param)
+			router := SetupRouter(cfg.BaseURL)
 			param := strings.NewReader(test.param)
 			rq := httptest.NewRequest(http.MethodPost, "/", param)
 			rw := httptest.NewRecorder()
@@ -53,6 +55,8 @@ func TestCreateShortURLHandler(t *testing.T) {
 }
 
 func TestGetShortURLHandler(t *testing.T) {
+	cfg := config.LoadConfiguration()
+
 	type want struct {
 		code int
 	}
@@ -83,7 +87,7 @@ func TestGetShortURLHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v urlID %v url %v\n", test.name, test.urlID, test.url)
-			router := SetupRouter()
+			router := SetupRouter(cfg.BaseURL)
 			if test.urlID == "found" {
 				urls[test.urlID] = test.url
 			}

@@ -6,13 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
-	"os"
 )
 
 var urls map[string]string
+var baseURL string
 
-func SetupRouter() *gin.Engine {
+func SetupRouter(configBaseURL string) *gin.Engine {
 	urls = make(map[string]string)
+	baseURL = configBaseURL
 
 	router := gin.Default()
 	router.GET("/:urlID", GetShortURLHandler)
@@ -29,15 +30,15 @@ func CreateShortURLHandler(ctx *gin.Context) {
 		return
 	}
 	reqBodyString := string(reqBody)
-	fmt.Printf("request body: %s\n", reqBodyString)
+	fmt.Printf("request body: %s\n", baseURL)
 	if reqBodyString != "" {
 		res, encodeErr := utils.EncodeURL(reqBodyString)
 		if encodeErr == nil {
 			urls[res] = reqBodyString
 			ctx.Writer.Header().Set("Content-Type", "text/plain")
 			ctx.Writer.WriteHeader(http.StatusCreated)
-			serverAddr := "http://" + os.Getenv("HOST") + ":" + os.Getenv("PORT") + "/" + res
-			_, writeErr := ctx.Writer.Write([]byte(serverAddr))
+			newAddr := baseURL + res
+			_, writeErr := ctx.Writer.Write([]byte(newAddr))
 			if writeErr != nil {
 				ctx.Writer.WriteHeader(http.StatusBadRequest)
 			}
