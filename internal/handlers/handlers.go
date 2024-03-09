@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
+	"os"
 )
 
 var urls map[string]string
@@ -35,7 +36,8 @@ func CreateShortURLHandler(ctx *gin.Context) {
 			urls[res] = reqBodyString
 			ctx.Writer.Header().Set("Content-Type", "text/plain")
 			ctx.Writer.WriteHeader(http.StatusCreated)
-			_, writeErr := ctx.Writer.Write([]byte("http://localhost:8080/" + res))
+			serverAddr := "http://" + os.Getenv("HOST") + ":" + os.Getenv("PORT") + "/" + res
+			_, writeErr := ctx.Writer.Write([]byte(serverAddr))
 			if writeErr != nil {
 				ctx.Writer.WriteHeader(http.StatusBadRequest)
 			}
