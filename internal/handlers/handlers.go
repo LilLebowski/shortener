@@ -30,14 +30,14 @@ func CreateShortURLHandler(ctx *gin.Context) {
 		return
 	}
 	reqBodyString := string(reqBody)
-	fmt.Printf("request body: %s\n", baseURL)
+	fmt.Printf("request body: %s\n", reqBodyString)
 	if reqBodyString != "" {
 		res, encodeErr := utils.EncodeURL(reqBodyString)
 		if encodeErr == nil {
 			urls[res] = reqBodyString
 			ctx.Writer.Header().Set("Content-Type", "text/plain")
 			ctx.Writer.WriteHeader(http.StatusCreated)
-			newAddr := baseURL + res
+			newAddr := baseURL + "/" + res
 			_, writeErr := ctx.Writer.Write([]byte(newAddr))
 			if writeErr != nil {
 				ctx.Writer.WriteHeader(http.StatusBadRequest)
