@@ -15,6 +15,7 @@ var baseURL string
 func SetupRouter(configBaseURL string) *gin.Engine {
 	urls = make(map[string]string)
 	baseURL = configBaseURL
+	fmt.Printf("base URL: %s\n", baseURL)
 
 	router := gin.Default()
 	router.GET("/:urlID", GetShortURLHandler)
