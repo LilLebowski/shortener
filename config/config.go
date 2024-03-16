@@ -2,9 +2,10 @@ package config
 
 import (
 	"flag"
-	"github.com/joho/godotenv"
 	"os"
 	"regexp"
+
+	"github.com/joho/godotenv"
 )
 
 const projectDirName = "shortener"
@@ -25,7 +26,7 @@ func LoadConfiguration() *ShortenerConfiguration {
 	}
 	cfg := &ShortenerConfiguration{}
 	if cfg.ServerAddress = os.Getenv("SERVER_ADDRESS"); cfg.ServerAddress == "" {
-		flag.StringVar(&cfg.ServerAddress, "a", ":8080", "Server address")
+		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "Server address")
 	}
 
 	if cfg.BaseURL = os.Getenv("BASE_URL"); cfg.BaseURL == "" {

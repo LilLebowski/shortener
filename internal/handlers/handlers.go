@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/LilLebowski/shortener/internal/utils"
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
+
+	"github.com/LilLebowski/shortener/internal/utils"
+	"github.com/gin-gonic/gin"
 )
 
 var urls map[string]string
@@ -31,21 +32,21 @@ func CreateShortURLHandler(ctx *gin.Context) {
 	}
 	reqBodyString := string(reqBody)
 	fmt.Printf("request body: %s\n", reqBodyString)
-	if reqBodyString != "" {
-		res, encodeErr := utils.EncodeURL(reqBodyString)
-		if encodeErr == nil {
-			urls[res] = reqBodyString
-			ctx.Writer.Header().Set("Content-Type", "text/plain")
-			ctx.Writer.WriteHeader(http.StatusCreated)
-			newAddr := baseURL + "/" + res
-			_, writeErr := ctx.Writer.Write([]byte(newAddr))
-			if writeErr != nil {
-				ctx.Writer.WriteHeader(http.StatusBadRequest)
-			}
-		} else {
-			ctx.Writer.WriteHeader(http.StatusBadRequest)
-		}
-	} else {
+	if reqBodyString == "" {
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	res, encodeErr := utils.EncodeURL(reqBodyString)
+	if encodeErr != nil {
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	urls[res] = reqBodyString
+	ctx.Writer.Header().Set("Content-Type", "text/plain")
+	ctx.Writer.WriteHeader(http.StatusCreated)
+	newAddr := baseURL + "/" + res
+	_, writeErr := ctx.Writer.Write([]byte(newAddr))
+	if writeErr != nil {
 		ctx.Writer.WriteHeader(http.StatusBadRequest)
 	}
 }
