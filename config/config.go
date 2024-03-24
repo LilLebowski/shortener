@@ -12,14 +12,25 @@ type ShortenerConfiguration struct {
 
 func LoadConfiguration() *ShortenerConfiguration {
 	cfg := &ShortenerConfiguration{}
+	regStringVar(&cfg.ServerAddress, "a", "localhost:8080", "Server address")
+	regStringVar(&cfg.BaseURL, "b", "http://localhost:8080", "Server base URL")
+	flag.Parse()
 	if cfg.ServerAddress = os.Getenv("SERVER_ADDRESS"); cfg.ServerAddress == "" {
-		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "Server address")
+		cfg.ServerAddress = getStringFlag("a")
 	}
 
 	if cfg.BaseURL = os.Getenv("BASE_URL"); cfg.BaseURL == "" {
-		flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "Server base URL")
+		cfg.BaseURL = getStringFlag("b")
 	}
-	flag.Parse()
-
 	return cfg
+}
+
+func regStringVar(p *string, name string, value string, usage string) {
+	if flag.Lookup(name) == nil {
+		flag.StringVar(p, name, value, usage)
+	}
+}
+
+func getStringFlag(name string) string {
+	return flag.Lookup(name).Value.(flag.Getter).Get().(string)
 }
