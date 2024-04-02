@@ -8,7 +8,7 @@ import (
 
 	"github.com/LilLebowski/shortener/config"
 	"github.com/LilLebowski/shortener/internal/handlers"
-	"github.com/LilLebowski/shortener/internal/logger"
+	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 func main() {
@@ -17,9 +17,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("logger don't Run! %s", err)
 	}
-	logger.Sugar = zapLogger.Sugar()
+	utils.Sugar = zapLogger.Sugar()
 	router := handlers.SetupRouter(cfg.BaseURL)
-	router.Use(logger.CustomMiddlewareLogger())
+	router.Use(utils.CustomMiddlewareLogger)
+	router.Use(utils.CustomCompression)
 	fmt.Printf("Server Address: %s\n", cfg.ServerAddress)
 	routerErr := router.Run(cfg.ServerAddress)
 	if routerErr != nil {
