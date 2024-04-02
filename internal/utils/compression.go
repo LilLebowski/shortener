@@ -3,9 +3,10 @@ package utils
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/gin-gonic/gin"
 	"io"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 var validCompressionContentType = [2]string{"application/json", "text/html"}
