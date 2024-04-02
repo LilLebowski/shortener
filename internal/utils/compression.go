@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bytes"
 	"compress/gzip"
 	"io"
 	"strings"
@@ -65,7 +64,7 @@ func CustomCompression(ctx *gin.Context) {
 		}
 	}(gz)
 
-	cw := &gzipWriter{Writer: &bytes.Buffer{}, ResponseWriter: ctx.Writer}
+	cw := &gzipWriter{Writer: gz, ResponseWriter: ctx.Writer}
 	ctx.Writer = cw
 	ctx.Next()
 }
