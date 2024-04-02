@@ -20,6 +20,16 @@ func (cw gzipWriter) Write(b []byte) (int, error) {
 }
 
 func CustomCompression(ctx *gin.Context) {
+	isValidContentType := false
+	contentType := ctx.Request.Header.Get("Content-Type")
+	isNeedCompression := strings.Contains(ctx.Request.Header.Get("Accept-Encoding"), "gzip")
+
+	for _, c := range validCompressionContentType {
+		if contentType == c {
+			isValidContentType = true
+			break
+		}
+	}
 
 	if ctx.Request.Header.Get(`Content-Encoding`) == "gzip" {
 		gz, err := gzip.NewReader(ctx.Request.Body)
@@ -36,8 +46,7 @@ func CustomCompression(ctx *gin.Context) {
 		}(gz)
 	}
 
-	isNeedCompression := strings.Contains(ctx.Request.Header.Get("Accept-Encoding"), "gzip")
-	if !isNeedCompression {
+	if !isNeedCompression || !isValidContentType {
 		ctx.Next()
 		return
 	}

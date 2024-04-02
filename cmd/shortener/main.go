@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/gin-contrib/gzip"
 	"go.uber.org/zap"
 
 	"github.com/LilLebowski/shortener/config"
@@ -20,7 +21,7 @@ func main() {
 	utils.Sugar = zapLogger.Sugar()
 	router := handlers.SetupRouter(cfg.BaseURL)
 	router.Use(utils.CustomMiddlewareLogger)
-	router.Use(utils.CustomCompression)
+	router.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithDecompressFn(utils.CustomCompression)))
 	fmt.Printf("Server Address: %s\n", cfg.ServerAddress)
 	routerErr := router.Run(cfg.ServerAddress)
 	if routerErr != nil {
