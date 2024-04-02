@@ -1,13 +1,15 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/LilLebowski/shortener/config"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/LilLebowski/shortener/config"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateShortURLHandler(t *testing.T) {
@@ -92,6 +94,56 @@ func TestGetShortURLHandler(t *testing.T) {
 				urls[test.urlID] = test.url
 			}
 			rq := httptest.NewRequest(http.MethodGet, "/"+test.urlID, nil)
+			rw := httptest.NewRecorder()
+			router.ServeHTTP(rw, rq)
+			res := rw.Result()
+			defer res.Body.Close()
+			fmt.Printf("want code = %d StatusCode %d\n", test.want.code, res.StatusCode)
+			assert.Equal(t, test.want.code, res.StatusCode)
+		})
+	}
+}
+
+func TestCreateShortURLHandlerJSON(t *testing.T) {
+	urls = make(map[string]string)
+	cfg := config.LoadConfiguration()
+
+	type want struct {
+		code int
+	}
+	tests := []struct {
+		name string
+		body CreateURLData
+		want want
+	}{
+		{
+			name: "GET 1. URL doesn't consist of data",
+			body: CreateURLData{
+				URL: "",
+			},
+			want: want{
+				code: 400,
+			},
+		},
+		{
+			name: "GET 2. body consist of data",
+			body: CreateURLData{
+				URL: "https://ya.ru",
+			},
+			want: want{
+				code: 201,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.body)
+			router := SetupRouter(cfg.BaseURL)
+			jsonBytes, _ := json.Marshal(test.body)
+			param := strings.NewReader(string(jsonBytes))
+			rq := httptest.NewRequest(http.MethodPost, "/api/shorten", param)
+			rq.Header.Set("Content-Type", "application/json")
 			rw := httptest.NewRecorder()
 			router.ServeHTTP(rw, rq)
 			res := rw.Result()

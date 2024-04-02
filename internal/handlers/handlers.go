@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/LilLebowski/shortener/internal/utils"
@@ -20,6 +22,7 @@ func SetupRouter(configBaseURL string) *gin.Engine {
 	router := gin.Default()
 	router.GET("/:urlID", GetShortURLHandler)
 	router.POST("/", CreateShortURLHandler)
+	router.POST("/api/shorten", CreateShortURLHandlerJSON)
 
 	return router
 }
@@ -63,5 +66,57 @@ func GetShortURLHandler(ctx *gin.Context) {
 	} else {
 		ctx.Writer.Header().Set("Location", "Not found")
 		ctx.Writer.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+type CreateURLData struct {
+	URL string `json:"URL"`
+}
+
+type CreateURLResponse struct {
+	Result string `json:"result"`
+}
+
+func CreateShortURLHandlerJSON(ctx *gin.Context) {
+	if ctx.Request.Header.Get("Content-Type") != "application/json" {
+		http.Error(ctx.Writer, "Invalid Content Type!", http.StatusBadRequest)
+		return
+	}
+	body, err := io.ReadAll(ctx.Request.Body)
+	if err != nil {
+		http.Error(ctx.Writer, fmt.Sprintf("Cannot read request body: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	var reqBody CreateURLData
+	err = json.Unmarshal(body, &reqBody)
+	if err != nil {
+		http.Error(ctx.Writer, fmt.Sprintf("Cannot decode request body to `JSON`: %s", err), http.StatusBadRequest)
+		return
+	}
+	res, encodeErr := utils.EncodeURL(reqBody.URL)
+	if encodeErr != nil {
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if reqBody.URL == "" {
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	fmt.Printf("request body: %s\n", reqBody)
+	urls[res] = reqBody.URL
+	ctx.Writer.Header().Set("Content-Type", "application/json")
+	ctx.Writer.WriteHeader(http.StatusCreated)
+	shortRes := CreateURLResponse{
+		Result: baseURL + "/" + res,
+	}
+	resp, err := json.Marshal(shortRes)
+	if err != nil {
+		http.Error(ctx.Writer, fmt.Sprintf("cannot encode response: %s", err), http.StatusBadRequest)
+	}
+
+	_, err = ctx.Writer.Write(resp)
+	if err != nil {
+		log.Fatalf("cannot write response to the client: %s", err)
 	}
 }
