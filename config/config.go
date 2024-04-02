@@ -7,14 +7,18 @@ import (
 )
 
 type ShortenerConfiguration struct {
-	ServerAddress string
-	BaseURL       string
+	ServerAddress string `env:"SERVER_ADDRESS"`
+	BaseURL       string `env:"BASE_URL"`
+	LogLevel      string `env:"FLAG_LOG_LEVEL"`
+	FilePath      string `env:"FILE_STORAGE_PATH"`
 }
 
 func LoadConfiguration() *ShortenerConfiguration {
 	cfg := &ShortenerConfiguration{}
 	regStringVar(&cfg.ServerAddress, "a", "localhost:8080", "Server address")
 	regStringVar(&cfg.BaseURL, "b", "http://localhost:8080", "Server base URL")
+	regStringVar(&cfg.LogLevel, "c", "debug", "Server log level")
+	regStringVar(&cfg.FilePath, "f", "short-url-db.json", "Server file storage")
 	flag.Parse()
 
 	envServerAddress := os.Getenv("SERVER_ADDRESS")
@@ -27,6 +31,18 @@ func LoadConfiguration() *ShortenerConfiguration {
 	envBaseURL = strings.TrimSpace(envBaseURL)
 	if envBaseURL != "" {
 		cfg.BaseURL = envBaseURL
+	}
+
+	envLogLevel := os.Getenv("LOG_LEVEL")
+	envLogLevel = strings.TrimSpace(envLogLevel)
+	if envLogLevel != "" {
+		cfg.BaseURL = envLogLevel
+	}
+
+	envFilePath := os.Getenv("FILE_PATH")
+	envFilePath = strings.TrimSpace(envFilePath)
+	if envFilePath != "" {
+		cfg.BaseURL = envFilePath
 	}
 
 	return cfg

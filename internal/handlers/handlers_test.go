@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/LilLebowski/shortener/internal/utils"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,7 +14,6 @@ import (
 )
 
 func TestCreateShortURLHandler(t *testing.T) {
-	urls = make(map[string]string)
 	cfg := config.LoadConfiguration()
 
 	type want struct {
@@ -43,7 +43,8 @@ func TestCreateShortURLHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.param)
-			router := SetupRouter(cfg.BaseURL)
+			storageInstance := utils.NewStorage()
+			router := SetupRouter(cfg.BaseURL, storageInstance)
 			param := strings.NewReader(test.param)
 			rq := httptest.NewRequest(http.MethodPost, "/", param)
 			rw := httptest.NewRecorder()
@@ -89,10 +90,11 @@ func TestGetShortURLHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v urlID %v url %v\n", test.name, test.urlID, test.url)
-			router := SetupRouter(cfg.BaseURL)
+			storageInstance := utils.NewStorage()
 			if test.urlID == "found" {
-				urls[test.urlID] = test.url
+				storageInstance.Set(test.urlID, test.url)
 			}
+			router := SetupRouter(cfg.BaseURL, storageInstance)
 			rq := httptest.NewRequest(http.MethodGet, "/"+test.urlID, nil)
 			rw := httptest.NewRecorder()
 			router.ServeHTTP(rw, rq)
@@ -105,7 +107,6 @@ func TestGetShortURLHandler(t *testing.T) {
 }
 
 func TestCreateShortURLHandlerJSON(t *testing.T) {
-	urls = make(map[string]string)
 	cfg := config.LoadConfiguration()
 
 	type want struct {
@@ -139,7 +140,8 @@ func TestCreateShortURLHandlerJSON(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.body)
-			router := SetupRouter(cfg.BaseURL)
+			storageInstance := utils.NewStorage()
+			router := SetupRouter(cfg.BaseURL, storageInstance)
 			jsonBytes, _ := json.Marshal(test.body)
 			param := strings.NewReader(string(jsonBytes))
 			rq := httptest.NewRequest(http.MethodPost, "/api/shorten", param)

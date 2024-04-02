@@ -39,7 +39,7 @@ func CustomCompression() gin.HandlerFunc {
 			defer func(compressWriter *gzip.Writer) {
 				err := compressWriter.Close()
 				if err != nil {
-					Sugar.Errorf("Error gz.Close: %s", err)
+					Log.Errorf("Error gz.Close: %s", err)
 				}
 			}(gz)
 			ctx.Header("Content-Encoding", "gzip")
@@ -49,13 +49,13 @@ func CustomCompression() gin.HandlerFunc {
 		if ctx.Request.Header.Get(`Content-Encoding`) == "gzip" {
 			gz, err := gzip.NewReader(ctx.Request.Body)
 			if err != nil {
-				Sugar.Errorf("Error NewReader(body): %s", err)
+				Log.Errorf("Error NewReader(body): %s", err)
 				return
 			}
 			defer func(gz *gzip.Reader) {
 				err := gz.Close()
 				if err != nil {
-					Sugar.Errorf("Error gz.Close: %s", err)
+					Log.Errorf("Error gz.Close: %s", err)
 				}
 			}(gz)
 
