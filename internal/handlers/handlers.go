@@ -25,6 +25,9 @@ func SetupRouter(configBaseURL string) *gin.Engine {
 	router.POST("/", CreateShortURLHandler)
 	router.POST("/api/shorten", CreateShortURLHandlerJSON)
 
+	router.Use(utils.CustomMiddlewareLogger(), gin.Recovery())
+	router.Use(utils.CustomCompression(), gin.Recovery())
+
 	return router
 }
 
