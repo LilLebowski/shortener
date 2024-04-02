@@ -44,6 +44,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.param)
 			storageInstance := utils.NewStorage()
+			utils.Initialize("debug")
 			router := SetupRouter(cfg.BaseURL, storageInstance)
 			param := strings.NewReader(test.param)
 			rq := httptest.NewRequest(http.MethodPost, "/", param)
@@ -94,6 +95,7 @@ func TestGetShortURLHandler(t *testing.T) {
 			if test.urlID == "found" {
 				storageInstance.Set(test.urlID, test.url)
 			}
+			utils.Initialize("debug")
 			router := SetupRouter(cfg.BaseURL, storageInstance)
 			rq := httptest.NewRequest(http.MethodGet, "/"+test.urlID, nil)
 			rw := httptest.NewRecorder()
@@ -141,6 +143,7 @@ func TestCreateShortURLHandlerJSON(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.body)
 			storageInstance := utils.NewStorage()
+			utils.Initialize("debug")
 			router := SetupRouter(cfg.BaseURL, storageInstance)
 			jsonBytes, _ := json.Marshal(test.body)
 			param := strings.NewReader(string(jsonBytes))

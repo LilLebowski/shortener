@@ -19,6 +19,11 @@ func SetupRouter(configBaseURL string, storageInstance *utils.Storage) *gin.Engi
 	storageShortener := utils.NewShortenerService(configBaseURL, storageInstance)
 
 	router := gin.Default()
+	router.Use(
+		gin.Recovery(),
+		utils.LoggerMiddleware(utils.Log),
+		utils.CustomCompression(),
+	)
 	router.GET("/:urlID", GetShortURLHandler(storageShortener))
 	router.POST("/", CreateShortURLHandler(storageShortener))
 	router.POST("/api/shorten", CreateShortURLHandlerJSON(storageShortener))
