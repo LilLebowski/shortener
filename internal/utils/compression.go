@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"bytes"
 	"compress/gzip"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -31,40 +33,39 @@ func CustomCompression(ctx *gin.Context) {
 		}
 	}
 
+	if isValidContentType && isNeedCompression {
+		gz := gzip.NewWriter(ctx.Writer)
+		defer func(compressWriter *gzip.Writer) {
+			err := compressWriter.Close()
+			if err != nil {
+				Sugar.Errorf("Error gz.Close: %s", err)
+			}
+		}(gz)
+		ctx.Header("Content-Encoding", "gzip")
+		ctx.Writer = &gzipWriter{ctx.Writer, gz}
+	}
+
 	if ctx.Request.Header.Get(`Content-Encoding`) == "gzip" {
 		gz, err := gzip.NewReader(ctx.Request.Body)
 		if err != nil {
 			Sugar.Errorf("Error NewReader(body): %s", err)
 			return
 		}
-		ctx.Request.Body = gz
 		defer func(gz *gzip.Reader) {
 			err := gz.Close()
 			if err != nil {
 				Sugar.Errorf("Error gz.Close: %s", err)
 			}
 		}(gz)
-	}
 
-	if !isNeedCompression || !isValidContentType {
-		ctx.Next()
-		return
-	}
-
-	ctx.Writer.Header().Set("Content-Encoding", "gzip")
-	gz, err := gzip.NewWriterLevel(ctx.Writer, gzip.BestSpeed)
-	if err != nil {
-		Sugar.Errorf("Error gzip compression: %s", err)
-		return
-	}
-	defer func(gz *gzip.Writer) {
-		err := gz.Close()
+		body, err := io.ReadAll(gz)
 		if err != nil {
-			Sugar.Errorf("Error gz close: %s", err)
+			log.Fatalf("error: read body: %d", err)
+			return
 		}
-	}(gz)
 
-	cw := &gzipWriter{Writer: gz, ResponseWriter: ctx.Writer}
-	ctx.Writer = cw
+		ctx.Request.Body = io.NopCloser(bytes.NewReader(body))
+		ctx.Request.ContentLength = int64(len(body))
+	}
 	ctx.Next()
 }
