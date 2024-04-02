@@ -13,11 +13,8 @@ import (
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
-var baseURL string
-
 func SetupRouter(configBaseURL string, storageInstance *utils.Storage) *gin.Engine {
-	baseURL = configBaseURL
-	fmt.Printf("base URL: %s\n", baseURL)
+	fmt.Printf("base URL: %s\n", configBaseURL)
 
 	storageShortener := utils.NewShortenerService(configBaseURL, storageInstance)
 
@@ -46,8 +43,7 @@ func CreateShortURLHandler(sh *utils.ShortenerService) gin.HandlerFunc {
 		shortURL := sh.Set(url)
 		ctx.Writer.Header().Set("Content-Type", "text/plain")
 		ctx.Writer.WriteHeader(http.StatusCreated)
-		newAddr := baseURL + "/" + shortURL
-		_, writeErr := ctx.Writer.Write([]byte(newAddr))
+		_, writeErr := ctx.Writer.Write([]byte(shortURL))
 		if writeErr != nil {
 			ctx.Writer.WriteHeader(http.StatusBadRequest)
 		}
@@ -104,7 +100,7 @@ func CreateShortURLHandlerJSON(sh *utils.ShortenerService) gin.HandlerFunc {
 		ctx.Writer.Header().Set("Content-Type", "application/json")
 		ctx.Writer.WriteHeader(http.StatusCreated)
 		shortRes := CreateURLResponse{
-			Result: baseURL + "/" + shortURL,
+			Result: shortURL,
 		}
 		resp, err := json.Marshal(shortRes)
 		if err != nil {
