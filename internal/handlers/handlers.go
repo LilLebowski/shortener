@@ -7,8 +7,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/LilLebowski/shortener/internal/utils"
 	"github.com/gin-gonic/gin"
+
+	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 var urls map[string]string
@@ -94,12 +95,12 @@ func CreateShortURLHandlerJSON(ctx *gin.Context) {
 		http.Error(ctx.Writer, fmt.Sprintf("Cannot decode request body to `JSON`: %s", err), http.StatusBadRequest)
 		return
 	}
-	res, encodeErr := utils.EncodeURL(reqBody.URL)
-	if encodeErr != nil {
+	if reqBody.URL == "" {
 		ctx.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if reqBody.URL == "" {
+	res, encodeErr := utils.EncodeURL(reqBody.URL)
+	if encodeErr != nil {
 		ctx.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}

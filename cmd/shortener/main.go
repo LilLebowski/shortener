@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/LilLebowski/shortener/internal/logger"
 	"go.uber.org/zap"
 
 	"github.com/LilLebowski/shortener/config"
 	"github.com/LilLebowski/shortener/internal/handlers"
+	"github.com/LilLebowski/shortener/internal/logger"
 )
 
 func main() {
