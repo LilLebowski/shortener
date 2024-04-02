@@ -10,8 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var validCompressionContentType = [2]string{"application/json", "text/html"}
-
 type gzipWriter struct {
 	gin.ResponseWriter
 	Writer io.Writer
@@ -23,43 +21,35 @@ func (cw gzipWriter) Write(b []byte) (int, error) {
 
 func CustomCompression() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		isValidContentType := false
-		contentType := ctx.Request.Header.Get("Content-Type")
-		isNeedCompression := strings.Contains(ctx.Request.Header.Get("Accept-Encoding"), "gzip")
-
-		for _, c := range validCompressionContentType {
-			if contentType == c {
-				isValidContentType = true
-				break
+		if ctx.Request.Header.Get("Content-Type") == "application/json" ||
+			ctx.Request.Header.Get("Content-Type") == "text/html" {
+			if strings.Contains(ctx.Request.Header.Get("Accept-Encoding"), "gzip") {
+				compressWriter := gzip.NewWriter(ctx.Writer)
+				defer func(compressWriter *gzip.Writer) {
+					err := compressWriter.Close()
+					if err != nil {
+						panic(err)
+					}
+				}(compressWriter)
+				ctx.Header("Content-Encoding", "gzip")
+				ctx.Writer = &gzipWriter{ctx.Writer, compressWriter}
 			}
 		}
 
-		if isValidContentType && isNeedCompression {
-			gz := gzip.NewWriter(ctx.Writer)
-			defer func(compressWriter *gzip.Writer) {
-				err := compressWriter.Close()
-				if err != nil {
-					Log.Errorf("Error gz.Close: %s", err)
-				}
-			}(gz)
-			ctx.Header("Content-Encoding", "gzip")
-			ctx.Writer = &gzipWriter{ctx.Writer, gz}
-		}
-
-		if ctx.Request.Header.Get(`Content-Encoding`) == "gzip" {
-			gz, err := gzip.NewReader(ctx.Request.Body)
+		if strings.Contains(ctx.Request.Header.Get("Content-Encoding"), "gzip") {
+			compressReader, err := gzip.NewReader(ctx.Request.Body)
 			if err != nil {
-				Log.Errorf("Error NewReader(body): %s", err)
+				log.Fatalf("error: new reader: %d", err)
 				return
 			}
-			defer func(gz *gzip.Reader) {
-				err := gz.Close()
+			defer func(compressReader *gzip.Reader) {
+				err := compressReader.Close()
 				if err != nil {
-					Log.Errorf("Error gz.Close: %s", err)
+					panic(err)
 				}
-			}(gz)
+			}(compressReader)
 
-			body, err := io.ReadAll(gz)
+			body, err := io.ReadAll(compressReader)
 			if err != nil {
 				log.Fatalf("error: read body: %d", err)
 				return
