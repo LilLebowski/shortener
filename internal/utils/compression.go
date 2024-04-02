@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"github.com/gin-gonic/gin"
+	"io"
 	"strings"
 )
 
@@ -11,11 +12,11 @@ var validCompressionContentType = [2]string{"application/json", "text/html"}
 
 type gzipWriter struct {
 	gin.ResponseWriter
-	buf *bytes.Buffer
+	Writer io.Writer
 }
 
 func (cw gzipWriter) Write(b []byte) (int, error) {
-	return cw.buf.Write(b)
+	return cw.Writer.Write(b)
 }
 
 func CustomCompression(ctx *gin.Context) {
@@ -63,7 +64,7 @@ func CustomCompression(ctx *gin.Context) {
 		}
 	}(gz)
 
-	cw := &gzipWriter{buf: &bytes.Buffer{}, ResponseWriter: ctx.Writer}
+	cw := &gzipWriter{Writer: &bytes.Buffer{}, ResponseWriter: ctx.Writer}
 	ctx.Writer = cw
 	ctx.Next()
 }
