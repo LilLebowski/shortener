@@ -36,13 +36,13 @@ func LoadConfiguration() *ShortenerConfiguration {
 	envLogLevel := os.Getenv("LOG_LEVEL")
 	envLogLevel = strings.TrimSpace(envLogLevel)
 	if envLogLevel != "" {
-		cfg.BaseURL = envLogLevel
+		cfg.LogLevel = envLogLevel
 	}
 
 	envFilePath := os.Getenv("FILE_PATH")
 	envFilePath = strings.TrimSpace(envFilePath)
 	if envFilePath != "" {
-		cfg.BaseURL = envFilePath
+		cfg.FilePath = envFilePath
 	}
 
 	return cfg
