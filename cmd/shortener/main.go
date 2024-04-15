@@ -19,7 +19,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	router := handlers.SetupRouter(cfg.BaseURL, storageInstance)
+	router := handlers.SetupRouter(cfg.BaseURL, cfg.DBPath, storageInstance)
 	utils.Log.Info("Running server", zap.String("address", cfg.ServerAddress))
 	routerErr := router.Run(cfg.ServerAddress)
 	if routerErr != nil {

@@ -13,10 +13,15 @@ import (
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
-func SetupRouter(configBaseURL string, storageInstance *utils.Storage) *gin.Engine {
+func SetupRouter(configBaseURL string, DBPath string, storageInstance *utils.Storage) *gin.Engine {
 	fmt.Printf("base URL: %s\n", configBaseURL)
 
-	storageShortener := utils.NewShortenerService(configBaseURL, storageInstance)
+	db, err := utils.InitDatabase(DBPath)
+	if err != nil {
+		panic(err)
+	}
+
+	storageShortener := utils.NewShortenerService(configBaseURL, storageInstance, db)
 
 	router := gin.Default()
 	router.Use(
@@ -27,6 +32,7 @@ func SetupRouter(configBaseURL string, storageInstance *utils.Storage) *gin.Engi
 	router.GET("/:urlID", GetShortURLHandler(storageShortener))
 	router.POST("/", CreateShortURLHandler(storageShortener))
 	router.POST("/api/shorten", CreateShortURLHandlerJSON(storageShortener))
+	router.GET("/ping", GetPingHandler(storageShortener))
 
 	return router
 }
@@ -116,5 +122,17 @@ func CreateShortURLHandlerJSON(sh *utils.ShortenerService) gin.HandlerFunc {
 		if err != nil {
 			log.Fatalf("cannot write response to the client: %s", err)
 		}
+	}
+}
+
+func GetPingHandler(sh *utils.ShortenerService) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		err := sh.Ping()
+		if err != nil {
+			fmt.Printf("err: %s", err)
+			ctx.JSON(http.StatusInternalServerError, "")
+			return
+		}
+		ctx.JSON(http.StatusOK, "")
 	}
 }
