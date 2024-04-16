@@ -21,7 +21,7 @@ func Init(BaseURL string, storageInstance *storage.Storage) *ShortenerService {
 
 func (s *ShortenerService) Set(originalURL string) string {
 	shortID := randSeq()
-	if s.Storage.File != nil {
+	if s.Storage.File.IsUsing() {
 		err := s.Storage.File.Set(originalURL, shortID)
 		if err != nil {
 			return ""
@@ -38,7 +38,7 @@ func randSeq() string {
 }
 
 func (s *ShortenerService) Get(shortID string) (string, bool) {
-	if s.Storage.File != nil {
+	if s.Storage.File.IsUsing() {
 		fullURL, _ := s.Storage.File.Get(shortID)
 		if fullURL != "" {
 			return fullURL, true

@@ -14,6 +14,7 @@ type MemoryRepository interface {
 type FileRepository interface {
 	Set(full string, short string) error
 	Get(short string) (string, error)
+	IsUsing() bool
 }
 
 type DBRepository interface {

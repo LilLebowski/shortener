@@ -92,7 +92,7 @@ func TestGetShortURLHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v urlID %v url %v\n", test.name, test.urlID, test.url)
-			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
+			storageInstance := storage.Init("", cfg.DBPath)
 			utils.Initialize("debug")
 			router := SetupRouter(cfg.BaseURL, storageInstance)
 			if test.urlID == "found" {

@@ -13,14 +13,15 @@ type URLItem struct {
 }
 
 type Store struct {
-	path string
+	isUsing bool
+	path    string
 }
 
 func Init(filePath string) *Store {
-	if filePath != "" {
-		return &Store{path: filePath}
+	return &Store{
+		isUsing: filePath != "",
+		path:    filePath,
 	}
-	return nil
 }
 
 func (s *Store) Set(full string, short string) error {
@@ -68,6 +69,10 @@ func (s *Store) Get(short string) (string, error) {
 		line, e = readLine(r)
 	}
 	return "", nil
+}
+
+func (s *Store) IsUsing() bool {
+	return s.isUsing
 }
 
 func readLine(r *bufio.Reader) (string, error) {
