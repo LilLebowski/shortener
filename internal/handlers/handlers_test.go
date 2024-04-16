@@ -3,13 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/LilLebowski/shortener/cmd/shortener/config"
+	"github.com/LilLebowski/shortener/internal/storage"
 	"github.com/LilLebowski/shortener/internal/utils"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/LilLebowski/shortener/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,9 +44,9 @@ func TestCreateShortURLHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.param)
-			storageInstance := utils.NewStorage()
+			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
 			utils.Initialize("debug")
-			router := SetupRouter(cfg.BaseURL, cfg.DBPath, storageInstance)
+			router := SetupRouter(cfg.BaseURL, storageInstance)
 			param := strings.NewReader(test.param)
 			rq := httptest.NewRequest(http.MethodPost, "/", param)
 			rw := httptest.NewRecorder()
@@ -91,12 +92,12 @@ func TestGetShortURLHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v urlID %v url %v\n", test.name, test.urlID, test.url)
-			storageInstance := utils.NewStorage()
-			if test.urlID == "found" {
-				storageInstance.Set(test.urlID, test.url)
-			}
+			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
 			utils.Initialize("debug")
-			router := SetupRouter(cfg.BaseURL, cfg.DBPath, storageInstance)
+			router := SetupRouter(cfg.BaseURL, storageInstance)
+			if test.urlID == "found" {
+				storageInstance.Memory.Set(test.url, test.urlID)
+			}
 			rq := httptest.NewRequest(http.MethodGet, "/"+test.urlID, nil)
 			rw := httptest.NewRecorder()
 			router.ServeHTTP(rw, rq)
@@ -142,9 +143,9 @@ func TestCreateShortURLHandlerJSON(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.body)
-			storageInstance := utils.NewStorage()
+			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
 			utils.Initialize("debug")
-			router := SetupRouter(cfg.BaseURL, cfg.DBPath, storageInstance)
+			router := SetupRouter(cfg.BaseURL, storageInstance)
 			jsonBytes, _ := json.Marshal(test.body)
 			param := strings.NewReader(string(jsonBytes))
 			rq := httptest.NewRequest(http.MethodPost, "/api/shorten", param)

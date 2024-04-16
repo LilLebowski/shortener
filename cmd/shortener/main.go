@@ -1,31 +1,52 @@
 package main
 
 import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+
 	"go.uber.org/zap"
 
-	"github.com/LilLebowski/shortener/config"
+	"github.com/LilLebowski/shortener/cmd/shortener/config"
 	"github.com/LilLebowski/shortener/internal/handlers"
+	"github.com/LilLebowski/shortener/internal/storage"
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	cfg := config.LoadConfiguration()
 	err := utils.Initialize(cfg.LogLevel)
 	if err != nil {
 		panic(err)
 	}
-	storageInstance := utils.NewStorage()
-	err = utils.FillFromStorage(storageInstance, cfg.FilePath)
-	if err != nil {
-		panic(err)
-	}
-	router := handlers.SetupRouter(cfg.BaseURL, cfg.DBPath, storageInstance)
+
+	storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
+
+	handler := handlers.SetupRouter(cfg.BaseURL, storageInstance)
+
 	utils.Log.Info("Running server", zap.String("address", cfg.ServerAddress))
-	routerErr := router.Run(cfg.ServerAddress)
-	if routerErr != nil {
-		panic(routerErr)
+	server := &http.Server{
+		Addr:    cfg.ServerAddress,
+		Handler: handler,
 	}
-	err = utils.WriteFile(storageInstance, cfg.FilePath, cfg.BaseURL)
+
+	go func() {
+		log.Println(server.ListenAndServe())
+		cancel()
+	}()
+
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	select {
+	case <-sigint:
+		cancel()
+	case <-ctx.Done():
+	}
+	err = server.Shutdown(context.Background())
 	if err != nil {
 		panic(err)
 	}

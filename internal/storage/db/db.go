@@ -1,4 +1,4 @@
-package utils
+package db
 
 import (
 	"context"
@@ -9,23 +9,23 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
-type StoreDB struct {
+type Store struct {
 	db *sql.DB
 }
 
-func InitDatabase(DatabasePath string) (*StoreDB, error) {
-	db, err := sql.Open("pgx", DatabasePath)
+func Init(databasePath string) (*Store, error) {
+	db, err := sql.Open("pgx", databasePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error opening db: %w", err)
 	}
 
-	storeDB := new(StoreDB)
+	storeDB := new(Store)
 	storeDB.db = db
 
 	return storeDB, nil
 }
 
-func (s *StoreDB) PingDBStore() error {
+func (s *Store) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
