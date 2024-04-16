@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	FileName      = "/tmp/short-url-db.json"
 	ServerAddress = "localhost:8080"
 	BaseURL       = "http://localhost:8080"
+	LogLevel      = "debug"
+	FileName      = "/tmp/short-url-db.json"
 	DBPath        = ""
 )
 
@@ -22,18 +23,20 @@ type Config struct {
 }
 
 func LoadConfiguration() *Config {
-	flagServerAddress := flag.String("a", ServerAddress, "server adress")
-	flagBaseURL := flag.String("b", BaseURL, "base url")
-	flagFilePath := flag.String("c", FileName, "file path")
-	flagDataBaseURI := flag.String("d", DBPath, "URI for database")
+	cfg := Config{}
+
+	regStringVar(&cfg.ServerAddress, "a", ServerAddress, "Server address")
+	regStringVar(&cfg.BaseURL, "b", BaseURL, "Server base URL")
+	regStringVar(&cfg.LogLevel, "c", LogLevel, "Server log level")
+	regStringVar(&cfg.FilePath, "f", FileName, "Server file storage")
+	regStringVar(&cfg.DBPath, "d", DBPath, "Server db path")
+
 	flag.Parse()
 
-	cfg := Config{
-		ServerAddress: ServerAddress,
-		FilePath:      FileName,
-		BaseURL:       BaseURL,
-		DBPath:        DBPath,
-	}
+	flagServerAddress := getStringFlag("a")
+	flagBaseURL := getStringFlag("b")
+	flagFilePath := getStringFlag("f")
+	flagDataBaseURI := getStringFlag("d")
 
 	err := env.Parse(&cfg)
 
@@ -41,18 +44,28 @@ func LoadConfiguration() *Config {
 		log.Fatal(err)
 	}
 
-	if *flagServerAddress != ServerAddress {
-		cfg.ServerAddress = *flagServerAddress
+	if flagServerAddress != ServerAddress {
+		cfg.ServerAddress = flagServerAddress
 	}
-	if *flagBaseURL != BaseURL {
-		cfg.BaseURL = *flagBaseURL
+	if flagBaseURL != BaseURL {
+		cfg.BaseURL = flagBaseURL
 	}
-	if *flagFilePath != FileName {
-		cfg.FilePath = *flagFilePath
+	if flagFilePath != FileName {
+		cfg.FilePath = flagFilePath
 	}
-	if *flagDataBaseURI != DBPath {
-		cfg.DBPath = *flagDataBaseURI
+	if flagDataBaseURI != DBPath {
+		cfg.DBPath = flagDataBaseURI
 	}
 
 	return &cfg
+}
+
+func regStringVar(p *string, name string, value string, usage string) {
+	if flag.Lookup(name) == nil {
+		flag.StringVar(p, name, value, usage)
+	}
+}
+
+func getStringFlag(name string) string {
+	return flag.Lookup(name).Value.(flag.Getter).Get().(string)
 }
