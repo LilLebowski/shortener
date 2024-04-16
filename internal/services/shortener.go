@@ -2,10 +2,8 @@ package services
 
 import (
 	"fmt"
-
-	"github.com/google/uuid"
-
 	"github.com/LilLebowski/shortener/internal/storage"
+	"github.com/google/uuid"
 )
 
 type ShortenerService struct {
@@ -28,9 +26,8 @@ func (s *ShortenerService) Set(originalURL string) string {
 		if err != nil {
 			return ""
 		}
-	} else {
-		s.Storage.Memory.Set(originalURL, shortID)
 	}
+	s.Storage.Memory.Set(originalURL, shortID)
 	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
 	return shortURL
 }
@@ -42,15 +39,12 @@ func randSeq() string {
 
 func (s *ShortenerService) Get(shortID string) (string, bool) {
 	if s.Storage.File != nil {
-		fmt.Printf("file!!!")
-		fullURL, err := s.Storage.File.Get(shortID)
-		if err != nil {
+		fullURL, _ := s.Storage.File.Get(shortID)
+		if fullURL != "" {
 			return fullURL, true
 		}
-	} else {
-		return s.Storage.Memory.Get(shortID)
 	}
-	return "", false
+	return s.Storage.Memory.Get(shortID)
 }
 
 func (s *ShortenerService) Ping() error {

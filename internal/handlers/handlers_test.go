@@ -74,7 +74,7 @@ func TestGetShortURLHandler(t *testing.T) {
 		{
 			name:  "POST 1. URL doesn't exist",
 			urlID: "notfound",
-			url:   "",
+			url:   "notfound",
 			want: want{
 				code: 400,
 			},

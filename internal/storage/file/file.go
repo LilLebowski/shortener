@@ -67,14 +67,6 @@ func (s *Store) Get(short string) (string, error) {
 		}
 		line, e = readLine(r)
 	}
-
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(file)
-
 	return "", nil
 }
 

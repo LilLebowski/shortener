@@ -10,7 +10,7 @@ const (
 	FileName      = "/tmp/short-url-db.json"
 	ServerAddress = "localhost:8080"
 	BaseURL       = "http://localhost:8080"
-	DBPath        = "host=localhost port=5432 user=admin password=12345 dbname=shortener sslmode=disable"
+	DBPath        = ""
 )
 
 type Config struct {
