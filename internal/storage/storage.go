@@ -7,7 +7,7 @@ import (
 )
 
 type MemoryRepository interface {
-	Set(originalURL string, shortID string)
+	Set(full string, short string)
 	Get(shortID string) (string, bool)
 }
 

@@ -10,7 +10,7 @@ func Init() *Storage {
 	}
 }
 
-func (s *Storage) Set(short string, full string) {
+func (s *Storage) Set(full string, short string) {
 	s.URLs[short] = full
 }
 
