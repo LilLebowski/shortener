@@ -38,7 +38,7 @@ func Init(databasePath string) (*Store, error) {
 
 func (s *Store) Set(full string, short string) error {
 	query := `
-        INSERT INTO urls (short_id, original_url) 
+        INSERT INTO url (short_id, original_url) 
         VALUES ($1, $2)
     `
 	_, err := s.db.Exec(query, short, full)
@@ -51,7 +51,7 @@ func (s *Store) Set(full string, short string) error {
 func (s *Store) Get(short string) (string, error) {
 	query := `
         SELECT original_url 
-        FROM urls 
+        FROM url 
         WHERE short_id = $1
     `
 
