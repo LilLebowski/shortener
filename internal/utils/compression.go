@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"log"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +27,7 @@ func CustomCompression() gin.HandlerFunc {
 				defer func(compressWriter *gzip.Writer) {
 					err := compressWriter.Close()
 					if err != nil {
-						panic(err)
+						Log.Error("error: compressWriter close: %d", err)
 					}
 				}(compressWriter)
 				ctx.Header("Content-Encoding", "gzip")
@@ -39,7 +38,7 @@ func CustomCompression() gin.HandlerFunc {
 		if strings.Contains(ctx.Request.Header.Get("Content-Encoding"), "gzip") {
 			compressReader, err := gzip.NewReader(ctx.Request.Body)
 			if err != nil {
-				log.Fatalf("error: new reader: %d", err)
+				Log.Error("error: new reader: %d", err)
 				return
 			}
 			defer func(compressReader *gzip.Reader) {
@@ -51,7 +50,7 @@ func CustomCompression() gin.HandlerFunc {
 
 			body, err := io.ReadAll(compressReader)
 			if err != nil {
-				log.Fatalf("error: read body: %d", err)
+				Log.Error("error: read body: %d", err)
 				return
 			}
 

@@ -17,19 +17,23 @@ type Store struct {
 
 func Init(databasePath string) (*Store, error) {
 	db, err := sql.Open("pgx", databasePath)
+	dbStore := &Store{
+		isConfigured: databasePath != "",
+	}
 	if err != nil {
-		return nil, fmt.Errorf("error opening db: %w", err)
+		dbStore.isConfigured = false
+		return dbStore, fmt.Errorf("error opening db: %w", err)
 	}
 
 	err = createTable(db)
 	if err != nil {
-		return nil, fmt.Errorf("error creae table db: %w", err)
+		dbStore.isConfigured = false
+		return dbStore, fmt.Errorf("error create table db: %w", err)
 	}
 
-	return &Store{
-		isConfigured: databasePath != "",
-		db:           db,
-	}, nil
+	dbStore.db = db
+
+	return dbStore, nil
 }
 
 func (s *Store) Set(full string, short string) error {
@@ -87,9 +91,5 @@ func createTable(db *sql.DB) error {
 	);`
 
 	_, err := db.Exec(query)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

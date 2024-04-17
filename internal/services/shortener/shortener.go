@@ -21,7 +21,12 @@ func Init(BaseURL string, storageInstance *storage.Storage) *Service {
 
 func (s *Service) Set(originalURL string) string {
 	shortID := randSeq()
-	if s.Storage.File.IsConfigured() {
+	if s.Storage.Database.IsConfigured() {
+		err := s.Storage.Database.Set(originalURL, shortID)
+		if err != nil {
+			return ""
+		}
+	} else if s.Storage.File.IsConfigured() {
 		err := s.Storage.File.Set(originalURL, shortID)
 		if err != nil {
 			return ""
@@ -38,7 +43,12 @@ func randSeq() string {
 }
 
 func (s *Service) Get(shortID string) (string, bool) {
-	if s.Storage.File.IsConfigured() {
+	if s.Storage.Database.IsConfigured() {
+		fullURL, _ := s.Storage.Database.Get(shortID)
+		if fullURL != "" {
+			return fullURL, true
+		}
+	} else if s.Storage.File.IsConfigured() {
 		fullURL, _ := s.Storage.File.Get(shortID)
 		if fullURL != "" {
 			return fullURL, true

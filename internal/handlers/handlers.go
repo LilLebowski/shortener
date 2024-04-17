@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -117,7 +116,7 @@ func CreateShortURLHandlerJSON(sh *shortener.Service) gin.HandlerFunc {
 
 		_, err = ctx.Writer.Write(resp)
 		if err != nil {
-			log.Fatalf("cannot write response to the client: %s", err)
+			utils.Log.Fatalf("cannot write response to the client: %s", err)
 		}
 	}
 }

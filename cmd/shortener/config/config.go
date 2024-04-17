@@ -2,8 +2,10 @@ package config
 
 import (
 	"flag"
+
 	"github.com/caarlos0/env"
-	"log"
+
+	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 const (
@@ -41,7 +43,7 @@ func LoadConfiguration() *Config {
 	err := env.Parse(&cfg)
 
 	if err != nil {
-		log.Fatal(err)
+		utils.Log.Fatal(err)
 	}
 
 	if flagServerAddress != ServerAddress {
