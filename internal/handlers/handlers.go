@@ -10,13 +10,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/LilLebowski/shortener/internal/services"
+	"github.com/LilLebowski/shortener/internal/services/shortener"
 	"github.com/LilLebowski/shortener/internal/storage"
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 func SetupRouter(configBaseURL string, storageInstance *storage.Storage) *gin.Engine {
-	storageShortener := services.Init(configBaseURL, storageInstance)
+	storageShortener := shortener.Init(configBaseURL, storageInstance)
 
 	router := gin.Default()
 	router.Use(
@@ -34,7 +34,7 @@ func SetupRouter(configBaseURL string, storageInstance *storage.Storage) *gin.En
 	return router
 }
 
-func CreateShortURLHandler(sh *services.ShortenerService) gin.HandlerFunc {
+func CreateShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		reqBody, err := io.ReadAll(ctx.Request.Body)
 		if err != nil {
@@ -58,7 +58,7 @@ func CreateShortURLHandler(sh *services.ShortenerService) gin.HandlerFunc {
 	}
 }
 
-func GetShortURLHandler(sh *services.ShortenerService) gin.HandlerFunc {
+func GetShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		urlID := ctx.Param("urlID")
 		fmt.Printf("url id: %s\n", urlID)
@@ -81,7 +81,7 @@ type CreateURLResponse struct {
 	Result string `json:"result"`
 }
 
-func CreateShortURLHandlerJSON(sh *services.ShortenerService) gin.HandlerFunc {
+func CreateShortURLHandlerJSON(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Header.Get("Content-Type") != "application/json" {
 			http.Error(ctx.Writer, "Invalid Content Type!", http.StatusBadRequest)
@@ -122,7 +122,7 @@ func CreateShortURLHandlerJSON(sh *services.ShortenerService) gin.HandlerFunc {
 	}
 }
 
-func GetPingHandler(sh *services.ShortenerService) gin.HandlerFunc {
+func GetPingHandler(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		err := sh.Ping()
 		if err != nil {

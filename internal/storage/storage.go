@@ -4,6 +4,7 @@ import (
 	"github.com/LilLebowski/shortener/internal/storage/db"
 	"github.com/LilLebowski/shortener/internal/storage/file"
 	"github.com/LilLebowski/shortener/internal/storage/memory"
+	"log"
 )
 
 type MemoryRepository interface {
@@ -14,10 +15,13 @@ type MemoryRepository interface {
 type FileRepository interface {
 	Set(full string, short string) error
 	Get(short string) (string, error)
-	IsUsing() bool
+	IsConfigured() bool
 }
 
 type DBRepository interface {
+	Set(full string, short string) error
+	Get(short string) (string, error)
+	IsConfigured() bool
 	Ping() error
 }
 
@@ -28,7 +32,10 @@ type Storage struct {
 }
 
 func Init(filePath string, databasePath string) *Storage {
-	dbInstance, _ := db.Init(databasePath)
+	dbInstance, err := db.Init(databasePath)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Storage{
 		File:     file.Init(filePath),
 		Memory:   memory.Init(),

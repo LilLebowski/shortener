@@ -1,4 +1,4 @@
-package services
+package shortener
 
 import (
 	"fmt"
@@ -6,22 +6,22 @@ import (
 	"github.com/google/uuid"
 )
 
-type ShortenerService struct {
+type Service struct {
 	BaseURL string
 	Storage *storage.Storage
 }
 
-func Init(BaseURL string, storageInstance *storage.Storage) *ShortenerService {
-	s := &ShortenerService{
+func Init(BaseURL string, storageInstance *storage.Storage) *Service {
+	s := &Service{
 		BaseURL: BaseURL,
 		Storage: storageInstance,
 	}
 	return s
 }
 
-func (s *ShortenerService) Set(originalURL string) string {
+func (s *Service) Set(originalURL string) string {
 	shortID := randSeq()
-	if s.Storage.File.IsUsing() {
+	if s.Storage.File.IsConfigured() {
 		err := s.Storage.File.Set(originalURL, shortID)
 		if err != nil {
 			return ""
@@ -37,8 +37,8 @@ func randSeq() string {
 	return newUUID.String()
 }
 
-func (s *ShortenerService) Get(shortID string) (string, bool) {
-	if s.Storage.File.IsUsing() {
+func (s *Service) Get(shortID string) (string, bool) {
+	if s.Storage.File.IsConfigured() {
 		fullURL, _ := s.Storage.File.Get(shortID)
 		if fullURL != "" {
 			return fullURL, true
@@ -47,6 +47,6 @@ func (s *ShortenerService) Get(shortID string) (string, bool) {
 	return s.Storage.Memory.Get(shortID)
 }
 
-func (s *ShortenerService) Ping() error {
+func (s *Service) Ping() error {
 	return s.Storage.Database.Ping()
 }
