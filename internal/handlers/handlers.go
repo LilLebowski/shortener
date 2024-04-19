@@ -27,6 +27,7 @@ func SetupRouter(configBaseURL string, storageInstance *storage.Storage) *gin.En
 	router.GET("/:urlID", GetShortURLHandler(storageShortener))
 	router.POST("/", CreateShortURLHandler(storageShortener))
 	router.POST("/api/shorten", CreateShortURLHandlerJSON(storageShortener))
+	router.POST("/api/shorten/batch", CreateBatch(storageShortener))
 
 	router.HandleMethodNotAllowed = true
 
@@ -130,5 +131,55 @@ func GetPingHandler(sh *shortener.Service) gin.HandlerFunc {
 			return
 		}
 		ctx.JSON(http.StatusOK, "")
+	}
+}
+
+type CreateBatchData struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type CreateBatchResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
+func CreateBatch(sh *shortener.Service) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var decoderBody []CreateBatchData
+		decoder := json.NewDecoder(ctx.Request.Body)
+		err := decoder.Decode(&decoderBody)
+		if err != nil {
+			errorMassage := map[string]interface{}{
+				"message": "Failed to read request body",
+				"code":    http.StatusInternalServerError,
+			}
+			answer, _ := json.Marshal(errorMassage)
+			ctx.Data(http.StatusInternalServerError, "application/json", answer)
+			return
+		}
+
+		var URLResponses []CreateBatchResponse
+		for _, req := range decoderBody {
+			url := strings.TrimSpace(req.OriginalURL)
+			shortURL := sh.Set(url)
+			urlResponse := CreateBatchResponse{
+				req.CorrelationID,
+				shortURL,
+			}
+			URLResponses = append(URLResponses, urlResponse)
+		}
+
+		respJSON, err := json.Marshal(URLResponses)
+		if err != nil {
+			errorMassage := map[string]interface{}{
+				"message": "Failed to read request body",
+				"code":    http.StatusInternalServerError,
+			}
+			answer, _ := json.Marshal(errorMassage)
+			ctx.Data(http.StatusInternalServerError, "application/json", answer)
+			return
+		}
+		ctx.Data(http.StatusCreated, "application/json", respJSON)
 	}
 }

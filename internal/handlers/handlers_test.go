@@ -159,3 +159,61 @@ func TestCreateShortURLHandlerJSON(t *testing.T) {
 		})
 	}
 }
+
+func Test_shortenURLsHandlerJSON(t *testing.T) {
+	cfg := config.LoadConfiguration()
+
+	type args struct {
+		code        int
+		contentType string
+	}
+	type RequestBodyURLs struct {
+		CorrelationID string `json:"correlation_id"`
+		OriginalURL   string `json:"original_url"`
+	}
+	tests := []struct {
+		name string
+		args args
+		body []RequestBodyURLs
+	}{
+		{
+			name: "POST 1. Full body",
+			args: args{
+				code:        201,
+				contentType: "application/json",
+			},
+			body: []RequestBodyURLs{
+				{
+					CorrelationID: "1",
+					OriginalURL:   "google.com",
+				},
+				{
+					CorrelationID: "2",
+					OriginalURL:   "google.ru",
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
+			router := SetupRouter(cfg.BaseURL, storageInstance)
+			jsonBody, err := json.Marshal(test.body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rq := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(string(jsonBody)))
+			rq.Header.Set("Content-Type", "application/json")
+			rw := httptest.NewRecorder()
+
+			router.ServeHTTP(rw, rq)
+
+			res := rw.Result()
+			defer res.Body.Close()
+
+			assert.Equal(t, test.args.code, res.StatusCode)
+			assert.Equal(t, test.args.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
