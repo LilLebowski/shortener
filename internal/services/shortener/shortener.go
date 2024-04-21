@@ -1,9 +1,12 @@
 package shortener
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
 	"fmt"
+	"strings"
+
 	"github.com/LilLebowski/shortener/internal/storage"
-	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -20,26 +23,32 @@ func Init(BaseURL string, storageInstance *storage.Storage) *Service {
 }
 
 func (s *Service) Set(originalURL string) (string, error) {
-	shortID := randSeq()
+	shortID := getShortURL(originalURL)
+	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
 	if s.Storage.Database.IsConfigured() {
 		err := s.Storage.Database.Set(originalURL, shortID)
 		if err != nil {
-			return shortID, err
+			return shortURL, err
 		}
 	} else if s.Storage.File.IsConfigured() {
 		err := s.Storage.File.Set(originalURL, shortID)
 		if err != nil {
-			return shortID, err
+			return shortURL, err
 		}
 	}
 	s.Storage.Memory.Set(originalURL, shortID)
-	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
 	return shortURL, nil
 }
 
-func randSeq() string {
-	newUUID := uuid.New()
-	return newUUID.String()
+func getShortURL(longURL string) string {
+	splitURL := strings.Split(longURL, "://")
+	hash := sha1.New()
+	if len(splitURL) < 2 {
+		hash.Write([]byte(longURL))
+	} else {
+		hash.Write([]byte(splitURL[1]))
+	}
+	return base64.URLEncoding.EncodeToString(hash.Sum(nil))
 }
 
 func (s *Service) Get(shortID string) (string, bool) {
