@@ -32,7 +32,6 @@ func Init(databasePath string) (*Store, error) {
 	err = createTable(db)
 	if err != nil {
 		dbStore.isConfigured = false
-		fmt.Printf("error create table db: %w", err)
 		return dbStore, fmt.Errorf("error create table db: %w", err)
 	}
 
