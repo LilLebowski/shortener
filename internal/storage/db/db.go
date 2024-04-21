@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v4/stdlib"
+
+	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 type Store struct {
@@ -28,6 +32,7 @@ func Init(databasePath string) (*Store, error) {
 	err = createTable(db)
 	if err != nil {
 		dbStore.isConfigured = false
+		fmt.Printf("error create table db: %w", err)
 		return dbStore, fmt.Errorf("error create table db: %w", err)
 	}
 
@@ -42,10 +47,11 @@ func (s *Store) Set(full string, short string) error {
         VALUES ($1, $2)
     `
 	_, err := s.db.Exec(query, short, full)
-	if err != nil {
-		return fmt.Errorf("error save URL: %w", err)
+	var e *pgconn.PgError
+	if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation {
+		return utils.NewUniqueConstraintError(err)
 	}
-	return nil
+	return err
 }
 
 func (s *Store) Get(short string) (string, error) {
@@ -88,7 +94,14 @@ func createTable(db *sql.DB) error {
 		short_id VARCHAR(256) NOT NULL UNIQUE,
 		original_url TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
+	);
+	DO $$ 
+		BEGIN 
+		 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = 'url' AND indexname = 'idx_original_url') THEN
+			CREATE UNIQUE INDEX idx_original_url ON url(original_url);
+		END IF;
+	END $$;
+`
 
 	_, err := db.Exec(query)
 	return err

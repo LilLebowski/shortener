@@ -19,22 +19,22 @@ func Init(BaseURL string, storageInstance *storage.Storage) *Service {
 	return s
 }
 
-func (s *Service) Set(originalURL string) string {
+func (s *Service) Set(originalURL string) (string, error) {
 	shortID := randSeq()
 	if s.Storage.Database.IsConfigured() {
 		err := s.Storage.Database.Set(originalURL, shortID)
 		if err != nil {
-			return ""
+			return shortID, err
 		}
 	} else if s.Storage.File.IsConfigured() {
 		err := s.Storage.File.Set(originalURL, shortID)
 		if err != nil {
-			return ""
+			return shortID, err
 		}
 	}
 	s.Storage.Memory.Set(originalURL, shortID)
 	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
-	return shortURL
+	return shortURL, nil
 }
 
 func randSeq() string {
