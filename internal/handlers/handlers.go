@@ -72,8 +72,9 @@ func CreateShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 			var uce *utils.UniqueConstraintError
 			if errors.As(setErr, &uce) {
 				ctx.Writer.WriteHeader(http.StatusConflict)
+			} else {
+				ctx.Writer.WriteHeader(http.StatusInternalServerError)
 			}
-			ctx.Writer.WriteHeader(http.StatusInternalServerError)
 		} else {
 			ctx.Writer.WriteHeader(http.StatusCreated)
 		}
