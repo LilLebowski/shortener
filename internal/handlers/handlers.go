@@ -2,21 +2,39 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/LilLebowski/shortener/internal/services/shortener"
+	"github.com/LilLebowski/shortener/internal/storage"
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
-func SetupRouter(configBaseURL string, storageInstance *utils.Storage) *gin.Engine {
-	fmt.Printf("base URL: %s\n", configBaseURL)
+type CreateBatchData struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
 
-	storageShortener := utils.NewShortenerService(configBaseURL, storageInstance)
+type CreateBatchResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
+type CreateURLData struct {
+	URL string `json:"URL"`
+}
+
+type CreateURLResponse struct {
+	Result string `json:"result"`
+}
+
+func SetupRouter(configBaseURL string, storageInstance *storage.Storage) *gin.Engine {
+	storageShortener := shortener.Init(configBaseURL, storageInstance)
 
 	router := gin.Default()
 	router.Use(
@@ -24,14 +42,18 @@ func SetupRouter(configBaseURL string, storageInstance *utils.Storage) *gin.Engi
 		utils.LoggerMiddleware(utils.Log),
 		utils.CustomCompression(),
 	)
+	router.GET("/ping", GetPingHandler(storageShortener))
 	router.GET("/:urlID", GetShortURLHandler(storageShortener))
 	router.POST("/", CreateShortURLHandler(storageShortener))
 	router.POST("/api/shorten", CreateShortURLHandlerJSON(storageShortener))
+	router.POST("/api/shorten/batch", CreateBatch(storageShortener))
+
+	router.HandleMethodNotAllowed = true
 
 	return router
 }
 
-func CreateShortURLHandler(sh *utils.ShortenerService) gin.HandlerFunc {
+func CreateShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		reqBody, err := io.ReadAll(ctx.Request.Body)
 		if err != nil {
@@ -45,9 +67,18 @@ func CreateShortURLHandler(sh *utils.ShortenerService) gin.HandlerFunc {
 			ctx.Writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		shortURL := sh.Set(url)
+		shortURL, setErr := sh.Set(url)
+		if setErr != nil {
+			var uce *utils.UniqueConstraintError
+			if errors.As(setErr, &uce) {
+				ctx.Writer.WriteHeader(http.StatusConflict)
+			} else {
+				ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			}
+		} else {
+			ctx.Writer.WriteHeader(http.StatusCreated)
+		}
 		ctx.Writer.Header().Set("Content-Type", "text/plain")
-		ctx.Writer.WriteHeader(http.StatusCreated)
 		_, writeErr := ctx.Writer.Write([]byte(shortURL))
 		if writeErr != nil {
 			ctx.Writer.WriteHeader(http.StatusBadRequest)
@@ -55,7 +86,7 @@ func CreateShortURLHandler(sh *utils.ShortenerService) gin.HandlerFunc {
 	}
 }
 
-func GetShortURLHandler(sh *utils.ShortenerService) gin.HandlerFunc {
+func GetShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		urlID := ctx.Param("urlID")
 		fmt.Printf("url id: %s\n", urlID)
@@ -70,15 +101,7 @@ func GetShortURLHandler(sh *utils.ShortenerService) gin.HandlerFunc {
 	}
 }
 
-type CreateURLData struct {
-	URL string `json:"URL"`
-}
-
-type CreateURLResponse struct {
-	Result string `json:"result"`
-}
-
-func CreateShortURLHandlerJSON(sh *utils.ShortenerService) gin.HandlerFunc {
+func CreateShortURLHandlerJSON(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Header.Get("Content-Type") != "application/json" {
 			http.Error(ctx.Writer, "Invalid Content Type!", http.StatusBadRequest)
@@ -101,9 +124,18 @@ func CreateShortURLHandlerJSON(sh *utils.ShortenerService) gin.HandlerFunc {
 			return
 		}
 		fmt.Printf("request body: %s\n", reqBody)
-		shortURL := sh.Set(reqBody.URL)
+		shortURL, setErr := sh.Set(reqBody.URL)
+		if setErr != nil {
+			var uce *utils.UniqueConstraintError
+			if errors.As(setErr, &uce) {
+				ctx.Writer.WriteHeader(http.StatusConflict)
+			} else {
+				ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			}
+		} else {
+			ctx.Writer.WriteHeader(http.StatusCreated)
+		}
 		ctx.Writer.Header().Set("Content-Type", "application/json")
-		ctx.Writer.WriteHeader(http.StatusCreated)
 		shortRes := CreateURLResponse{
 			Result: shortURL,
 		}
@@ -114,7 +146,74 @@ func CreateShortURLHandlerJSON(sh *utils.ShortenerService) gin.HandlerFunc {
 
 		_, err = ctx.Writer.Write(resp)
 		if err != nil {
-			log.Fatalf("cannot write response to the client: %s", err)
+			utils.Log.Fatalf("cannot write response to the client: %s", err)
 		}
+	}
+}
+
+func GetPingHandler(sh *shortener.Service) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		err := sh.Ping()
+		if err != nil {
+			fmt.Printf("err: %s", err)
+			ctx.JSON(http.StatusInternalServerError, "")
+			return
+		}
+		ctx.JSON(http.StatusOK, "")
+	}
+}
+
+func CreateBatch(sh *shortener.Service) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var decoderBody []CreateBatchData
+		decoder := json.NewDecoder(ctx.Request.Body)
+		err := decoder.Decode(&decoderBody)
+		if err != nil {
+			errorMassage := map[string]interface{}{
+				"message": "Failed to read request body",
+				"code":    http.StatusInternalServerError,
+			}
+			answer, _ := json.Marshal(errorMassage)
+			ctx.Data(http.StatusInternalServerError, "application/json", answer)
+			return
+		}
+
+		httpStatus := http.StatusCreated
+		var URLResponses []CreateBatchResponse
+		for _, req := range decoderBody {
+			url := strings.TrimSpace(req.OriginalURL)
+			shortURL, setErr := sh.Set(url)
+			if setErr != nil {
+				var uce *utils.UniqueConstraintError
+				if errors.As(setErr, &uce) {
+					httpStatus = http.StatusConflict
+				} else {
+					errorMassage := map[string]interface{}{
+						"message": "the url could not be shortened",
+						"code":    http.StatusInternalServerError,
+					}
+					answer, _ := json.Marshal(errorMassage)
+					ctx.Data(http.StatusInternalServerError, "application/json", answer)
+					return
+				}
+			}
+			urlResponse := CreateBatchResponse{
+				req.CorrelationID,
+				shortURL,
+			}
+			URLResponses = append(URLResponses, urlResponse)
+		}
+
+		respJSON, err := json.Marshal(URLResponses)
+		if err != nil {
+			errorMassage := map[string]interface{}{
+				"message": "Failed to read request body",
+				"code":    http.StatusInternalServerError,
+			}
+			answer, _ := json.Marshal(errorMassage)
+			ctx.Data(http.StatusInternalServerError, "application/json", answer)
+			return
+		}
+		ctx.Data(httpStatus, "application/json", respJSON)
 	}
 }
