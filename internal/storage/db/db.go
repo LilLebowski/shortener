@@ -100,6 +100,20 @@ func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string,
 	return urls, nil
 }
 
+func (s *Store) Delete(userID string, shortURL string, updateChan chan<- string) error {
+	query := `
+		UPDATE url
+		SET is_deleted = true
+		WHERE short_id = $1 and  user_id = $2`
+
+	_, err := s.db.Exec(query, shortURL, userID)
+	if err != nil {
+		return err
+	}
+	updateChan <- shortURL
+	return nil
+}
+
 func (s *Store) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -121,7 +135,8 @@ func createTable(db *sql.DB) error {
 		short_id VARCHAR(256) NOT NULL UNIQUE,
 		original_url TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    	user_id VARCHAR(360)
+    	user_id VARCHAR(360),
+		is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 	);
 	DO $$ 
 		BEGIN 

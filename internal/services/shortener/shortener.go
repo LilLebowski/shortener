@@ -4,8 +4,10 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
+	"go.uber.org/zap"
 	"strings"
 
+	"github.com/LilLebowski/shortener/internal/middleware"
 	"github.com/LilLebowski/shortener/internal/storage"
 )
 
@@ -68,6 +70,32 @@ func (s *Service) GetByUserID(userID string) ([]map[string]string, error) {
 		return urls, err
 	}
 	return s.Storage.Memory.GetByUserID(userID, s.BaseURL)
+}
+
+func (s *Service) DeleteURLsRep(userID string, shorURLs []string) error {
+	resultChan := make(chan string)
+	updateChan := make(chan string, len(shorURLs))
+
+	if !s.Storage.Database.IsConfigured() {
+		return nil
+	}
+
+	go func() {
+		for _, shortURL := range shorURLs {
+			err := s.Storage.Database.Delete(userID, shortURL, updateChan)
+			if err != nil {
+				middleware.Log.Error("Failed to delete URLs", zap.Error(err))
+			}
+		}
+	}()
+
+	go func() {
+		for updateShortID := range updateChan {
+			resultChan <- updateShortID
+		}
+		close(resultChan)
+	}()
+	return nil
 }
 
 func getShortURL(longURL string) string {

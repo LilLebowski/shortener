@@ -51,6 +51,7 @@ func SetupRouter(config *config.Config, storageInstance *storage.Storage) *gin.E
 	router.POST("/api/shorten", CreateShortURLHandlerJSON(storageShortener))
 	router.POST("/api/shorten/batch", CreateBatch(storageShortener))
 	router.GET("/api/user/urls", GetListByUserIDHandler(storageShortener))
+	router.DELETE("/api/user/urls", DeleteUserUrlsHandler(storageShortener))
 
 	router.HandleMethodNotAllowed = true
 
@@ -262,5 +263,38 @@ func GetListByUserIDHandler(sh *shortener.Service) gin.HandlerFunc {
 			return
 		}
 		ctx.JSON(code, urls)
+	}
+}
+
+func DeleteUserUrlsHandler(sh *shortener.Service) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		code := http.StatusAccepted
+		userIDFromContext, exists := ctx.Get("userID")
+		if !exists {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to get userID",
+				"error":   errors.New("failed to get user from context").Error(),
+			})
+			return
+		}
+		userID, _ := userIDFromContext.(string)
+
+		var shorURLs []string
+		if err := ctx.BindJSON(&shorURLs); err != nil {
+			code = http.StatusBadRequest
+			ctx.JSON(code, gin.H{
+				"error:": err.Error(),
+			})
+		}
+
+		err := sh.DeleteURLsRep(userID, shorURLs)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed delete to url",
+				"error":   errors.New("failed to get user from context").Error(),
+			})
+			return
+		}
+		ctx.Status(code)
 	}
 }
