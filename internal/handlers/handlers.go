@@ -97,7 +97,12 @@ func GetShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		urlID := ctx.Param("urlID")
 		fmt.Printf("url id: %s\n", urlID)
-		if value, ok := sh.Get(urlID); ok {
+		value, isDeleted, ok := sh.Get(urlID)
+		if ok {
+			if isDeleted {
+				ctx.Status(http.StatusGone)
+				return
+			}
 			fmt.Printf("found url: %s\n", value)
 			ctx.Writer.Header().Set("Location", value)
 			ctx.Writer.WriteHeader(http.StatusTemporaryRedirect)

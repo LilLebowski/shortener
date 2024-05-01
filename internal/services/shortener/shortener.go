@@ -42,19 +42,20 @@ func (s *Service) Set(originalURL string, userID string) (string, error) {
 	return shortURL, nil
 }
 
-func (s *Service) Get(shortID string) (string, bool) {
+func (s *Service) Get(shortID string) (string, bool, bool) {
 	if s.Storage.Database.IsConfigured() {
-		fullURL, _ := s.Storage.Database.Get(shortID)
+		fullURL, isDeleted, _ := s.Storage.Database.Get(shortID)
 		if fullURL != "" {
-			return fullURL, true
+			return fullURL, isDeleted, true
 		}
 	} else if s.Storage.File.IsConfigured() {
 		fullURL, _ := s.Storage.File.Get(shortID)
 		if fullURL != "" {
-			return fullURL, true
+			return fullURL, false, true
 		}
 	}
-	return s.Storage.Memory.Get(shortID)
+	fullURL, exists := s.Storage.Memory.Get(shortID)
+	return fullURL, false, exists
 }
 
 func (s *Service) Ping() error {

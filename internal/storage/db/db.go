@@ -53,28 +53,29 @@ func (s *Store) Set(full string, short string, userID string) error {
 	return err
 }
 
-func (s *Store) Get(short string) (string, error) {
+func (s *Store) Get(short string) (string, bool, error) {
 	query := `
-        SELECT original_url 
+        SELECT original_url, is_deleted
         FROM url 
         WHERE short_id = $1
     `
 
 	var originalURL string
-	err := s.db.QueryRow(query, short).Scan(&originalURL)
+	var isDeleted bool
+	err := s.db.QueryRow(query, short).Scan(&originalURL, &isDeleted)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", err
+			return "", false, err
 		}
-		return "", err
+		return "", false, err
 	}
 
-	return originalURL, err
+	return originalURL, isDeleted, err
 }
 
 func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
 	urls := make([]map[string]string, 0)
-	query := `SELECT original_url, short_id FROM url WHERE user_id=$1;`
+	query := `SELECT original_url, short_id FROM url WHERE user_id=$1 AND is_deleted=false;`
 	rows, err := s.db.Query(query, userID)
 	if err != nil {
 		return urls, err
