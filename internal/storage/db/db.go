@@ -86,7 +86,7 @@ func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string,
 
 	for rows.Next() {
 		var shortID, originalURL string
-		if err = rows.Scan(&shortID, &originalURL); err != nil {
+		if err = rows.Scan(&originalURL, &shortID); err != nil {
 			return nil, err
 		}
 		shortURL := fmt.Sprintf("%s/%s", baseURL, shortID)
