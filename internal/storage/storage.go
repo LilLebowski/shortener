@@ -7,19 +7,22 @@ import (
 )
 
 type MemoryRepository interface {
-	Set(full string, short string)
+	Set(full string, short string, userID string)
 	Get(shortID string) (string, bool)
+	GetByUserID(userID string, baseURL string) ([]map[string]string, error)
 }
 
 type FileRepository interface {
-	Set(full string, short string) error
+	Set(full string, short string, userID string) error
 	Get(short string) (string, error)
+	GetByUserID(userID string, baseURL string) ([]map[string]string, error)
 	IsConfigured() bool
 }
 
 type DBRepository interface {
-	Set(full string, short string) error
+	Set(full string, short string, userID string) error
 	Get(short string) (string, error)
+	GetByUserID(userID string, baseURL string) ([]map[string]string, error)
 	IsConfigured() bool
 	Ping() error
 }

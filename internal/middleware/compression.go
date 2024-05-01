@@ -1,4 +1,4 @@
-package utils
+package middleware
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ func (cw gzipWriter) Write(b []byte) (int, error) {
 	return cw.Writer.Write(b)
 }
 
-func CustomCompression() gin.HandlerFunc {
+func Compression() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Header.Get("Content-Type") == "application/json" ||
 			ctx.Request.Header.Get("Content-Type") == "text/html" {

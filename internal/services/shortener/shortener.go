@@ -22,33 +22,22 @@ func Init(BaseURL string, storageInstance *storage.Storage) *Service {
 	return s
 }
 
-func (s *Service) Set(originalURL string) (string, error) {
+func (s *Service) Set(originalURL string, userID string) (string, error) {
 	shortID := getShortURL(originalURL)
 	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
 	if s.Storage.Database.IsConfigured() {
-		err := s.Storage.Database.Set(originalURL, shortID)
+		err := s.Storage.Database.Set(originalURL, shortID, userID)
 		if err != nil {
 			return shortURL, err
 		}
 	} else if s.Storage.File.IsConfigured() {
-		err := s.Storage.File.Set(originalURL, shortID)
+		err := s.Storage.File.Set(originalURL, shortID, userID)
 		if err != nil {
 			return shortURL, err
 		}
 	}
-	s.Storage.Memory.Set(originalURL, shortID)
+	s.Storage.Memory.Set(originalURL, shortID, userID)
 	return shortURL, nil
-}
-
-func getShortURL(longURL string) string {
-	splitURL := strings.Split(longURL, "://")
-	hash := sha1.New()
-	if len(splitURL) < 2 {
-		hash.Write([]byte(longURL))
-	} else {
-		hash.Write([]byte(splitURL[1]))
-	}
-	return base64.URLEncoding.EncodeToString(hash.Sum(nil))
 }
 
 func (s *Service) Get(shortID string) (string, bool) {
@@ -68,4 +57,26 @@ func (s *Service) Get(shortID string) (string, bool) {
 
 func (s *Service) Ping() error {
 	return s.Storage.Database.Ping()
+}
+
+func (s *Service) GetByUserID(userID string) ([]map[string]string, error) {
+	if s.Storage.Database.IsConfigured() {
+		urls, err := s.Storage.Database.GetByUserID(userID, s.BaseURL)
+		return urls, err
+	} else if s.Storage.File.IsConfigured() {
+		urls, err := s.Storage.File.GetByUserID(userID, s.BaseURL)
+		return urls, err
+	}
+	return s.Storage.Memory.GetByUserID(userID, s.BaseURL)
+}
+
+func getShortURL(longURL string) string {
+	splitURL := strings.Split(longURL, "://")
+	hash := sha1.New()
+	if len(splitURL) < 2 {
+		hash.Write([]byte(longURL))
+	} else {
+		hash.Write([]byte(splitURL[1]))
+	}
+	return base64.URLEncoding.EncodeToString(hash.Sum(nil))
 }

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/LilLebowski/shortener/cmd/shortener/config"
+	"github.com/LilLebowski/shortener/internal/middleware"
 	"github.com/LilLebowski/shortener/internal/storage"
-	"github.com/LilLebowski/shortener/internal/utils"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -45,8 +45,8 @@ func TestCreateShortURLHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.param)
 			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
-			utils.Initialize("debug")
-			router := SetupRouter(cfg.BaseURL, storageInstance)
+			middleware.Initialize("debug")
+			router := SetupRouter(cfg, storageInstance)
 			param := strings.NewReader(test.param)
 			rq := httptest.NewRequest(http.MethodPost, "/", param)
 			rw := httptest.NewRecorder()
@@ -93,10 +93,10 @@ func TestGetShortURLHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v urlID %v url %v\n", test.name, test.urlID, test.url)
 			storageInstance := storage.Init("", cfg.DBPath)
-			utils.Initialize("debug")
-			router := SetupRouter(cfg.BaseURL, storageInstance)
+			middleware.Initialize("debug")
+			router := SetupRouter(cfg, storageInstance)
 			if test.urlID == "found" {
-				storageInstance.Memory.Set(test.url, test.urlID)
+				storageInstance.Memory.Set(test.url, test.urlID, "")
 			}
 			rq := httptest.NewRequest(http.MethodGet, "/"+test.urlID, nil)
 			rw := httptest.NewRecorder()
@@ -144,8 +144,8 @@ func TestCreateShortURLHandlerJSON(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fmt.Printf("\n\nTest %v Body %v\n", cfg.BaseURL, test.body)
 			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
-			utils.Initialize("debug")
-			router := SetupRouter(cfg.BaseURL, storageInstance)
+			middleware.Initialize("debug")
+			router := SetupRouter(cfg, storageInstance)
 			jsonBytes, _ := json.Marshal(test.body)
 			param := strings.NewReader(string(jsonBytes))
 			rq := httptest.NewRequest(http.MethodPost, "/api/shorten", param)
@@ -198,7 +198,7 @@ func Test_shortenURLsHandlerJSON(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
-			router := SetupRouter(cfg.BaseURL, storageInstance)
+			router := SetupRouter(cfg, storageInstance)
 			jsonBody, err := json.Marshal(test.body)
 			if err != nil {
 				t.Fatal(err)

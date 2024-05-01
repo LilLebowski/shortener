@@ -1,4 +1,4 @@
-package utils
+package middleware
 
 import (
 	"time"
@@ -24,7 +24,7 @@ func Initialize(level string) error {
 	return nil
 }
 
-func LoggerMiddleware(logger *zap.SugaredLogger) gin.HandlerFunc {
+func Logger(logger *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()

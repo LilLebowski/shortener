@@ -2,10 +2,9 @@ package config
 
 import (
 	"flag"
+	"time"
 
 	"github.com/caarlos0/env"
-
-	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 const (
@@ -13,7 +12,9 @@ const (
 	BaseURL       = "http://localhost:8080"
 	LogLevel      = "debug"
 	FileName      = "/tmp/short-url-db.json"
-	DBPath        = ""
+	DBPath        = "host=localhost port=5432 user=admin password=12345 dbname=shortener sslmode=disable"
+	TokenExpire   = time.Hour * 24
+	SecretKey     = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 )
 
 type Config struct {
@@ -22,10 +23,16 @@ type Config struct {
 	LogLevel      string `env:"FLAG_LOG_LEVEL"`
 	FilePath      string `env:"FILE_STORAGE_PATH"`
 	DBPath        string `env:"DATABASE_DSN"`
+
+	TokenExpire time.Duration
+	SecretKey   string
 }
 
 func LoadConfiguration() *Config {
-	cfg := Config{}
+	cfg := Config{
+		TokenExpire: TokenExpire,
+		SecretKey:   SecretKey,
+	}
 
 	regStringVar(&cfg.ServerAddress, "a", ServerAddress, "Server address")
 	regStringVar(&cfg.BaseURL, "b", BaseURL, "Server base URL")
@@ -43,7 +50,7 @@ func LoadConfiguration() *Config {
 	err := env.Parse(&cfg)
 
 	if err != nil {
-		utils.Log.Fatal(err)
+		panic(err)
 	}
 
 	if flagServerAddress != ServerAddress {
