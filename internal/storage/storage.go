@@ -31,6 +31,7 @@ type Storage struct {
 }
 
 func Init(filePath string, databasePath string) *Storage {
+	// FIXME: вынести в service/shortener и избавиться от IsConfigured и лишних интерфейсов
 	dbInstance, _ := db.Init(databasePath)
 	return &Storage{
 		File:     file.Init(filePath),
