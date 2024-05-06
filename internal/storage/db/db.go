@@ -40,12 +40,12 @@ func Init(databasePath string) (*Store, error) {
 	return dbStore, nil
 }
 
-func (s *Store) Set(full string, short string) error {
+func (s *Store) Set(full string, short string, userID string) error {
 	query := `
-        INSERT INTO url (short_id, original_url) 
-        VALUES ($1, $2)
+        INSERT INTO url (short_id, original_url, user_id) 
+        VALUES ($1, $2, $3)
     `
-	_, err := s.db.Exec(query, short, full)
+	_, err := s.db.Exec(query, short, full, userID)
 	var e *pgconn.PgError
 	if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation {
 		return utils.NewUniqueConstraintError(err)
@@ -53,23 +53,66 @@ func (s *Store) Set(full string, short string) error {
 	return err
 }
 
-func (s *Store) Get(short string) (string, error) {
+func (s *Store) Get(short string) (string, bool, error) {
 	query := `
-        SELECT original_url 
+        SELECT original_url, is_deleted
         FROM url 
         WHERE short_id = $1
     `
 
 	var originalURL string
-	err := s.db.QueryRow(query, short).Scan(&originalURL)
+	var isDeleted bool
+	err := s.db.QueryRow(query, short).Scan(&originalURL, &isDeleted)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", err
+			return "", false, err
 		}
-		return "", err
+		return "", false, err
 	}
 
-	return originalURL, err
+	return originalURL, isDeleted, err
+}
+
+func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
+	urls := make([]map[string]string, 0)
+	query := `SELECT original_url, short_id FROM url WHERE user_id=$1 AND is_deleted=false;`
+	rows, err := s.db.Query(query, userID)
+	if err != nil {
+		return urls, err
+	}
+	if rows.Err() != nil {
+		return urls, rows.Err()
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var shortID, originalURL string
+		if err = rows.Scan(&originalURL, &shortID); err != nil {
+			return nil, err
+		}
+		shortURL := fmt.Sprintf("%s/%s", baseURL, shortID)
+		urlMap := map[string]string{"short_url": shortURL, "original_url": originalURL}
+		urls = append(urls, urlMap)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during iteration through link rows: %w", err)
+	}
+
+	return urls, nil
+}
+
+func (s *Store) Delete(userID string, shortURL string, updateChan chan<- string) error {
+	query := `
+		UPDATE url
+		SET is_deleted = true
+		WHERE short_id = $1 and  user_id = $2`
+
+	_, err := s.db.Exec(query, shortURL, userID)
+	if err != nil {
+		return err
+	}
+	updateChan <- shortURL
+	return nil
 }
 
 func (s *Store) Ping() error {
@@ -92,7 +135,9 @@ func createTable(db *sql.DB) error {
 		id SERIAL PRIMARY KEY,
 		short_id VARCHAR(256) NOT NULL UNIQUE,
 		original_url TEXT NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    	user_id VARCHAR(360),
+		is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 	);
 	DO $$ 
 		BEGIN 

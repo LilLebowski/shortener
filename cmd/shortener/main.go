@@ -11,24 +11,24 @@ import (
 
 	"github.com/LilLebowski/shortener/cmd/shortener/config"
 	"github.com/LilLebowski/shortener/internal/handlers"
+	"github.com/LilLebowski/shortener/internal/middleware"
 	"github.com/LilLebowski/shortener/internal/storage"
-	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cfg := config.LoadConfiguration()
-	err := utils.Initialize(cfg.LogLevel)
+	err := middleware.Initialize(cfg.LogLevel)
 	if err != nil {
 		panic(err)
 	}
 
 	storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
 
-	handler := handlers.SetupRouter(cfg.BaseURL, storageInstance)
+	handler := handlers.SetupRouter(cfg, storageInstance)
 
-	utils.Log.Info("Running server", zap.String("address", cfg.ServerAddress))
+	middleware.Log.Info("Running server", zap.String("address", cfg.ServerAddress))
 	server := &http.Server{
 		Addr:    cfg.ServerAddress,
 		Handler: handler,

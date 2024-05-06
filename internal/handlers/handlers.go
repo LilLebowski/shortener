@@ -10,6 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/LilLebowski/shortener/cmd/shortener/config"
+	"github.com/LilLebowski/shortener/internal/middleware"
 	"github.com/LilLebowski/shortener/internal/services/shortener"
 	"github.com/LilLebowski/shortener/internal/storage"
 	"github.com/LilLebowski/shortener/internal/utils"
@@ -33,20 +35,23 @@ type CreateURLResponse struct {
 	Result string `json:"result"`
 }
 
-func SetupRouter(configBaseURL string, storageInstance *storage.Storage) *gin.Engine {
-	storageShortener := shortener.Init(configBaseURL, storageInstance)
+func SetupRouter(config *config.Config, storageInstance *storage.Storage) *gin.Engine {
+	storageShortener := shortener.Init(config.BaseURL, storageInstance)
 
 	router := gin.Default()
 	router.Use(
 		gin.Recovery(),
-		utils.LoggerMiddleware(utils.Log),
-		utils.CustomCompression(),
+		middleware.Logger(middleware.Log),
+		middleware.Compression(),
+		middleware.Authorization(config),
 	)
 	router.GET("/ping", GetPingHandler(storageShortener))
 	router.GET("/:urlID", GetShortURLHandler(storageShortener))
 	router.POST("/", CreateShortURLHandler(storageShortener))
 	router.POST("/api/shorten", CreateShortURLHandlerJSON(storageShortener))
 	router.POST("/api/shorten/batch", CreateBatch(storageShortener))
+	router.GET("/api/user/urls", GetListByUserIDHandler(storageShortener))
+	router.DELETE("/api/user/urls", DeleteUserUrlsHandler(storageShortener))
 
 	router.HandleMethodNotAllowed = true
 
@@ -67,7 +72,9 @@ func CreateShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 			ctx.Writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		shortURL, setErr := sh.Set(url)
+		userIDFromContext, _ := ctx.Get("userID")
+		userID, _ := userIDFromContext.(string)
+		shortURL, setErr := sh.Set(url, userID)
 		if setErr != nil {
 			var uce *utils.UniqueConstraintError
 			if errors.As(setErr, &uce) {
@@ -90,7 +97,12 @@ func GetShortURLHandler(sh *shortener.Service) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		urlID := ctx.Param("urlID")
 		fmt.Printf("url id: %s\n", urlID)
-		if value, ok := sh.Get(urlID); ok {
+		value, isDeleted, ok := sh.Get(urlID)
+		if ok {
+			if isDeleted {
+				ctx.Status(http.StatusGone)
+				return
+			}
 			fmt.Printf("found url: %s\n", value)
 			ctx.Writer.Header().Set("Location", value)
 			ctx.Writer.WriteHeader(http.StatusTemporaryRedirect)
@@ -124,7 +136,9 @@ func CreateShortURLHandlerJSON(sh *shortener.Service) gin.HandlerFunc {
 			return
 		}
 		fmt.Printf("request body: %s\n", reqBody)
-		shortURL, setErr := sh.Set(reqBody.URL)
+		userIDFromContext, _ := ctx.Get("userID")
+		userID, _ := userIDFromContext.(string)
+		shortURL, setErr := sh.Set(reqBody.URL, userID)
 		if setErr != nil {
 			var uce *utils.UniqueConstraintError
 			if errors.As(setErr, &uce) {
@@ -146,7 +160,7 @@ func CreateShortURLHandlerJSON(sh *shortener.Service) gin.HandlerFunc {
 
 		_, err = ctx.Writer.Write(resp)
 		if err != nil {
-			utils.Log.Fatalf("cannot write response to the client: %s", err)
+			middleware.Log.Fatalf("cannot write response to the client: %s", err)
 		}
 	}
 }
@@ -182,7 +196,9 @@ func CreateBatch(sh *shortener.Service) gin.HandlerFunc {
 		var URLResponses []CreateBatchResponse
 		for _, req := range decoderBody {
 			url := strings.TrimSpace(req.OriginalURL)
-			shortURL, setErr := sh.Set(url)
+			userIDFromContext, _ := ctx.Get("userID")
+			userID, _ := userIDFromContext.(string)
+			shortURL, setErr := sh.Set(url, userID)
 			if setErr != nil {
 				var uce *utils.UniqueConstraintError
 				if errors.As(setErr, &uce) {
@@ -215,5 +231,75 @@ func CreateBatch(sh *shortener.Service) gin.HandlerFunc {
 			return
 		}
 		ctx.Data(httpStatus, "application/json", respJSON)
+	}
+}
+
+func GetListByUserIDHandler(sh *shortener.Service) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		code := http.StatusOK
+		userIDFromContext, exists := ctx.Get("userID")
+		if !exists {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to get userID",
+				"error":   errors.New("failed to get user from context").Error(),
+			})
+			return
+		}
+		isNew, _ := ctx.Get("new")
+		if isNew == true {
+			code = http.StatusUnauthorized
+			ctx.JSON(code, nil)
+			return
+		}
+		userID, _ := userIDFromContext.(string)
+		urls, err := sh.GetByUserID(userID)
+		ctx.Header("Content-type", "application/json")
+		if err != nil {
+			code = http.StatusInternalServerError
+			ctx.JSON(code, gin.H{
+				"message": "Failed to retrieve user URLs",
+				"code":    code,
+			})
+			return
+		}
+
+		if len(urls) == 0 {
+			ctx.JSON(http.StatusNoContent, nil)
+			return
+		}
+		ctx.JSON(code, urls)
+	}
+}
+
+func DeleteUserUrlsHandler(sh *shortener.Service) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		code := http.StatusAccepted
+		userIDFromContext, exists := ctx.Get("userID")
+		if !exists {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to get userID",
+				"error":   errors.New("failed to get user from context").Error(),
+			})
+			return
+		}
+		userID, _ := userIDFromContext.(string)
+
+		var shorURLs []string
+		if err := ctx.BindJSON(&shorURLs); err != nil {
+			code = http.StatusBadRequest
+			ctx.JSON(code, gin.H{
+				"error:": err.Error(),
+			})
+		}
+
+		err := sh.DeleteURLsRep(userID, shorURLs)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed delete to url",
+				"error":   errors.New("failed to get user from context").Error(),
+			})
+			return
+		}
+		ctx.Status(code)
 	}
 }
