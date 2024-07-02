@@ -2,24 +2,46 @@ package shortener
 
 import (
 	"crypto/sha1"
+	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"github.com/LilLebowski/shortener/internal/storage"
+	"github.com/LilLebowski/shortener/internal/utils"
 	"go.uber.org/zap"
+	"log"
 	"strings"
 
+	"github.com/LilLebowski/shortener/cmd/shortener/config"
 	"github.com/LilLebowski/shortener/internal/middleware"
-	"github.com/LilLebowski/shortener/internal/storage"
+	dbs "github.com/LilLebowski/shortener/internal/storage/db"
+	fs "github.com/LilLebowski/shortener/internal/storage/file"
+	ms "github.com/LilLebowski/shortener/internal/storage/memory"
 )
 
 type Service struct {
 	BaseURL string
-	Storage *storage.Storage
+	Storage storage.Repository
 }
 
-func Init(BaseURL string, storageInstance *storage.Storage) *Service {
+func Init(config *config.Config) *Service {
 	s := &Service{
-		BaseURL: BaseURL,
-		Storage: storageInstance,
+		BaseURL: config.BaseURL,
+	}
+	var dbc *sql.DB
+	var err error
+	if config.DBPath != "" {
+		dbc, err = utils.NewDB(config.DBPath)
+	}
+	if config.DBPath != "" && err == nil {
+		s.Storage, err = dbs.Init(dbc)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else if config.FilePath != "" {
+		s.Storage = fs.Init(config.FilePath)
+	} else {
+		s.Storage = ms.Init()
 	}
 	return s
 }
@@ -27,63 +49,41 @@ func Init(BaseURL string, storageInstance *storage.Storage) *Service {
 func (s *Service) Set(originalURL string, userID string) (string, error) {
 	shortID := getShortURL(originalURL)
 	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
-	if s.Storage.Database.IsConfigured() {
-		err := s.Storage.Database.Set(originalURL, shortID, userID)
-		if err != nil {
-			return shortURL, err
-		}
-	} else if s.Storage.File.IsConfigured() {
-		err := s.Storage.File.Set(originalURL, shortID, userID)
-		if err != nil {
-			return shortURL, err
-		}
+	err := s.Storage.Set(originalURL, shortID, userID)
+	if err != nil {
+		return shortURL, err
 	}
-	s.Storage.Memory.Set(originalURL, shortID, userID)
 	return shortURL, nil
 }
 
 func (s *Service) Get(shortID string) (string, bool, bool) {
-	if s.Storage.Database.IsConfigured() {
-		fullURL, isDeleted, _ := s.Storage.Database.Get(shortID)
-		if fullURL != "" {
-			return fullURL, isDeleted, true
-		}
-	} else if s.Storage.File.IsConfigured() {
-		fullURL, _ := s.Storage.File.Get(shortID)
-		if fullURL != "" {
-			return fullURL, false, true
-		}
+	var deletedErr *utils.DeletedError
+	var notFoundErr *utils.NotFoundError
+	fullURL, err := s.Storage.Get(shortID)
+	if errors.As(err, &deletedErr) {
+		return fullURL, false, false
 	}
-	fullURL, exists := s.Storage.Memory.Get(shortID)
-	return fullURL, false, exists
+	if errors.As(err, &notFoundErr) {
+		return fullURL, true, false
+	}
+	return fullURL, false, true
 }
 
 func (s *Service) Ping() error {
-	return s.Storage.Database.Ping()
+	return s.Storage.Ping()
 }
 
 func (s *Service) GetByUserID(userID string) ([]map[string]string, error) {
-	if s.Storage.Database.IsConfigured() {
-		urls, err := s.Storage.Database.GetByUserID(userID, s.BaseURL)
-		return urls, err
-	} else if s.Storage.File.IsConfigured() {
-		urls, err := s.Storage.File.GetByUserID(userID, s.BaseURL)
-		return urls, err
-	}
-	return s.Storage.Memory.GetByUserID(userID, s.BaseURL)
+	return s.Storage.GetByUserID(userID, s.BaseURL)
 }
 
 func (s *Service) DeleteURLsRep(userID string, shorURLs []string) error {
 	resultChan := make(chan string)
 	updateChan := make(chan string, len(shorURLs))
 
-	if !s.Storage.Database.IsConfigured() {
-		return nil
-	}
-
 	go func() {
 		for _, shortURL := range shorURLs {
-			err := s.Storage.Database.Delete(userID, shortURL, updateChan)
+			err := s.Storage.Delete(userID, shortURL, updateChan)
 			if err != nil {
 				middleware.Log.Error("Failed to delete URLs", zap.Error(err))
 			}

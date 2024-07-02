@@ -19,3 +19,43 @@ func NewUniqueConstraintError(err error) error {
 		Err: err,
 	}
 }
+
+type DeletedError struct {
+	Message string
+	Err     error
+}
+
+func (de *DeletedError) Error() string {
+	return fmt.Sprintf("[%s] %v", de.Message, de.Err)
+}
+
+func (de *DeletedError) Unwrap() error {
+	return de.Err
+}
+
+func NewDeletedError(msg string, err error) error {
+	return &DeletedError{
+		Message: msg,
+		Err:     err,
+	}
+}
+
+type NotFoundError struct {
+	Message string
+	Err     error
+}
+
+func (nfe *NotFoundError) Error() string {
+	return fmt.Sprintf("[%s] %v", nfe.Message, nfe.Err)
+}
+
+func (nfe *NotFoundError) Unwrap() error {
+	return nfe.Err
+}
+
+func NewNotFoundError(msg string, err error) error {
+	return &NotFoundError{
+		Message: msg,
+		Err:     err,
+	}
+}

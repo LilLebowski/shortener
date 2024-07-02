@@ -1,6 +1,10 @@
 package memory
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/LilLebowski/shortener/internal/utils"
+)
 
 type URLItem struct {
 	OriginalURL string
@@ -17,19 +21,24 @@ func Init() *Storage {
 	}
 }
 
-func (s *Storage) Set(full string, short string, userID string) {
+func (s *Storage) Ping() error {
+	return nil
+}
+
+func (s *Storage) Set(full string, short string, userID string) error {
 	s.URLs[short] = &URLItem{
 		OriginalURL: full,
 		UserID:      userID,
 	}
+	return nil
 }
 
-func (s *Storage) Get(short string) (string, bool) {
+func (s *Storage) Get(short string) (string, error) {
 	value, exists := s.URLs[short]
 	if exists {
-		return value.OriginalURL, exists
+		return value.OriginalURL, nil
 	}
-	return "", false
+	return "", utils.NewDeletedError("url is already deleted", nil)
 }
 
 func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
@@ -42,4 +51,8 @@ func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]strin
 		}
 	}
 	return urls, nil
+}
+
+func (s *Storage) Delete(userID string, shortURL string, updateChan chan<- string) error {
+	return nil
 }
