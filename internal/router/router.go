@@ -20,13 +20,13 @@ func Init(config *config.Config) *gin.Engine {
 		middleware.Compression(),
 		middleware.Authorization(config),
 	)
-	router.GET("/ping", handlerWithService.GetPingHandler)
-	router.GET("/:urlID", handlerWithService.GetShortURLHandler)
 	router.POST("/", handlerWithService.CreateShortURLHandler)
 	router.POST("/api/shorten", handlerWithService.CreateShortURLHandlerJSON)
+	router.GET("/:urlID", handlerWithService.GetShortURLHandler)
 	router.POST("/api/shorten/batch", handlerWithService.CreateBatch)
 	router.GET("/api/user/urls", handlerWithService.GetListByUserIDHandler)
 	router.DELETE("/api/user/urls", handlerWithService.DeleteUserUrlsHandler)
+	router.GET("/ping", handlerWithService.GetPingHandler)
 
 	router.HandleMethodNotAllowed = true
 

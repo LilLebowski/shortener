@@ -6,17 +6,18 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/LilLebowski/shortener/internal/storage"
-	"github.com/LilLebowski/shortener/internal/utils"
 	"go.uber.org/zap"
 	"log"
 	"strings"
 
 	"github.com/LilLebowski/shortener/cmd/shortener/config"
 	"github.com/LilLebowski/shortener/internal/middleware"
+	"github.com/LilLebowski/shortener/internal/models"
+	"github.com/LilLebowski/shortener/internal/storage"
 	dbs "github.com/LilLebowski/shortener/internal/storage/db"
 	fs "github.com/LilLebowski/shortener/internal/storage/file"
 	ms "github.com/LilLebowski/shortener/internal/storage/memory"
+	"github.com/LilLebowski/shortener/internal/utils"
 )
 
 type Service struct {
@@ -47,7 +48,7 @@ func Init(config *config.Config) *Service {
 }
 
 func (s *Service) Set(originalURL string, userID string) (string, error) {
-	shortID := getShortURL(originalURL)
+	shortID := GetShortURL(originalURL)
 	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
 	err := s.Storage.Set(originalURL, shortID, userID)
 	if err != nil {
@@ -56,15 +57,41 @@ func (s *Service) Set(originalURL string, userID string) (string, error) {
 	return shortURL, nil
 }
 
+func (s *Service) SetBatch(urls []models.URLs, userID string) ([]models.ShortURLs, error) {
+	var fullURLs []models.FullURLs
+	var shorts []models.ShortURLs
+
+	for _, req := range urls {
+		url := strings.TrimSpace(req.OriginalURL)
+		shortID := GetShortURL(url)
+		shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
+		fullURLs = append(fullURLs, models.FullURLs{
+			ShortURL:    shortID,
+			OriginalURL: url,
+		})
+		shorts = append(shorts, models.ShortURLs{
+			ShortURL:      shortURL,
+			CorrelationID: req.CorrelationID,
+		})
+	}
+
+	err := s.Storage.SetBatch(userID, fullURLs)
+
+	if err != nil {
+		return shorts, err
+	}
+	return shorts, nil
+}
+
 func (s *Service) Get(shortID string) (string, bool, bool) {
 	var deletedErr *utils.DeletedError
 	var notFoundErr *utils.NotFoundError
 	fullURL, err := s.Storage.Get(shortID)
 	if errors.As(err, &deletedErr) {
-		return fullURL, false, false
+		return fullURL, true, true
 	}
 	if errors.As(err, &notFoundErr) {
-		return fullURL, true, false
+		return fullURL, false, false
 	}
 	return fullURL, false, true
 }
@@ -99,7 +126,7 @@ func (s *Service) DeleteURLsRep(userID string, shorURLs []string) error {
 	return nil
 }
 
-func getShortURL(longURL string) string {
+func GetShortURL(longURL string) string {
 	splitURL := strings.Split(longURL, "://")
 	hash := sha1.New()
 	if len(splitURL) < 2 {

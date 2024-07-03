@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/LilLebowski/shortener/internal/middleware"
+	"github.com/LilLebowski/shortener/internal/models"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/jackc/pgconn"
@@ -37,6 +40,43 @@ func (s *Storage) Set(full string, short string, userID string) error {
 		return utils.NewUniqueConstraintError(err)
 	}
 	return err
+}
+
+func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func(tx *sql.Tx) {
+		_ = tx.Rollback()
+	}(tx)
+
+	query := `
+		INSERT INTO url (short_id, original_url, user_id) 
+		VALUES (DEFAULT, $1, $2, $3);
+	`
+
+	stmt, err := tx.PrepareContext(context.Background(), query)
+
+	defer func(stmt *sql.Stmt) {
+		err = stmt.Close()
+		if err != nil {
+			middleware.Log.Info("Close statement error", zap.Error(err))
+		}
+	}(stmt)
+
+	for _, v := range urls {
+		_, err = stmt.ExecContext(context.Background(), v.ShortURL, v.OriginalURL, userID)
+		var e *pgconn.PgError
+		if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation {
+			return utils.NewUniqueConstraintError(err)
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Storage) Get(short string) (string, error) {

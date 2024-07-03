@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/LilLebowski/shortener/internal/models"
 )
 
 type URLItem struct {
@@ -41,6 +43,33 @@ func (s *Storage) Set(full string, short string, userID string) error {
 	}
 	data = append(data, '\n')
 	_, err = file.Write(data)
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
+
+	return err
+}
+
+func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
+	file, err := os.OpenFile(s.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+
+	if err != nil {
+		return fmt.Errorf("storage don't open to write! Error: %s. Path: %s", err, s.path)
+	}
+
+	for _, url := range urls {
+		item := URLItem{OriginalURL: url.OriginalURL, ShortURL: url.ShortURL, UserID: userID}
+		data, err := json.Marshal(item)
+		if err != nil {
+			return fmt.Errorf("cannot encode storage item %s", err)
+		}
+		data = append(data, '\n')
+		_, err = file.Write(data)
+	}
 
 	defer func(file *os.File) {
 		err := file.Close()

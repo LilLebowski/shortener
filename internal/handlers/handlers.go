@@ -61,7 +61,6 @@ func (srvc *HandlerWithService) CreateShortURLHandler(ctx *gin.Context) {
 
 func (srvc *HandlerWithService) GetShortURLHandler(ctx *gin.Context) {
 	urlID := ctx.Param("urlID")
-	fmt.Printf("url id: %s\n", urlID)
 	value, isDeleted, ok := srvc.service.Get(urlID)
 	if ok {
 		if isDeleted {
@@ -152,31 +151,23 @@ func (srvc *HandlerWithService) CreateBatch(ctx *gin.Context) {
 	}
 
 	httpStatus := http.StatusCreated
-	var URLResponses []models.ShortURLs
-	for _, req := range decoderBody {
-		url := strings.TrimSpace(req.OriginalURL)
-		userIDFromContext, _ := ctx.Get("userID")
-		userID, _ := userIDFromContext.(string)
-		shortURL, setErr := srvc.service.Set(url, userID)
-		if setErr != nil {
-			var uce *utils.UniqueConstraintError
-			if errors.As(setErr, &uce) {
-				httpStatus = http.StatusConflict
-			} else {
-				errorMassage := map[string]interface{}{
-					"message": "the url could not be shortened",
-					"code":    http.StatusInternalServerError,
-				}
-				answer, _ := json.Marshal(errorMassage)
-				ctx.Data(http.StatusInternalServerError, "application/json", answer)
-				return
+
+	userIDFromContext, _ := ctx.Get("userID")
+	userID, _ := userIDFromContext.(string)
+	URLResponses, setErr := srvc.service.SetBatch(decoderBody, userID)
+	if setErr != nil {
+		var uce *utils.UniqueConstraintError
+		if errors.As(setErr, &uce) {
+			httpStatus = http.StatusConflict
+		} else {
+			errorMassage := map[string]interface{}{
+				"message": "the url could not be shortened",
+				"code":    http.StatusInternalServerError,
 			}
+			answer, _ := json.Marshal(errorMassage)
+			ctx.Data(http.StatusInternalServerError, "application/json", answer)
+			return
 		}
-		urlResponse := models.ShortURLs{
-			CorrelationID: req.CorrelationID,
-			ShortURL:      shortURL,
-		}
-		URLResponses = append(URLResponses, urlResponse)
 	}
 
 	respJSON, err := json.Marshal(URLResponses)

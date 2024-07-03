@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 
+	"github.com/LilLebowski/shortener/internal/models"
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
@@ -29,6 +30,16 @@ func (s *Storage) Set(full string, short string, userID string) error {
 	s.URLs[short] = &URLItem{
 		OriginalURL: full,
 		UserID:      userID,
+	}
+	return nil
+}
+
+func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
+	for _, url := range urls {
+		s.URLs[url.ShortURL] = &URLItem{
+			OriginalURL: url.OriginalURL,
+			UserID:      userID,
+		}
 	}
 	return nil
 }
