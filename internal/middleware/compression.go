@@ -15,6 +15,11 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
+// Write compression writer
+func (cw gzipWriter) Write(b []byte) (int, error) {
+	return cw.Writer.Write(b)
+}
+
 // Compression - middleware for compress and decompress zip data
 func Compression() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
