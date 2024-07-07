@@ -1,3 +1,4 @@
+// Package middleware consist methods for user authorization
 package middleware
 
 import (
@@ -12,16 +13,19 @@ import (
 	"github.com/LilLebowski/shortener/cmd/shortener/config"
 )
 
+// Claims - struct for userID and JWT Claims Set
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID string
 }
 
+// User - struct for user info
 type User struct {
 	ID    string
 	IsNew bool
 }
 
+// Authorization - authorization middleware
 func Authorization(config *config.Config) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userInfo, err := getUserIDFromCookie(ctx, config)

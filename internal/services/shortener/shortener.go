@@ -1,3 +1,4 @@
+// Package shortener contains methods for shortener service
 package shortener
 
 import (
@@ -20,11 +21,13 @@ import (
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
+// Service shortener service struct
 type Service struct {
 	BaseURL string
 	Storage storage.Repository
 }
 
+// Init initialization for shortener service
 func Init(config *config.Config) *Service {
 	s := &Service{
 		BaseURL: config.BaseURL,
@@ -47,6 +50,7 @@ func Init(config *config.Config) *Service {
 	return s
 }
 
+// Set create short link and save info to storage
 func (s *Service) Set(originalURL string, userID string) (string, error) {
 	shortID := GetShortURL(originalURL)
 	shortURL := fmt.Sprintf("%s/%s", s.BaseURL, shortID)
@@ -57,6 +61,7 @@ func (s *Service) Set(originalURL string, userID string) (string, error) {
 	return shortURL, nil
 }
 
+// SetBatch create short link and save info to storage from array
 func (s *Service) SetBatch(urls []models.URLs, userID string) ([]models.ShortURLs, error) {
 	var fullURLs []models.FullURLs
 	var shorts []models.ShortURLs
@@ -83,6 +88,7 @@ func (s *Service) SetBatch(urls []models.URLs, userID string) ([]models.ShortURL
 	return shorts, nil
 }
 
+// Get get link info from storage
 func (s *Service) Get(shortID string) (string, bool, bool) {
 	var deletedErr *utils.DeletedError
 	var notFoundErr *utils.NotFoundError
@@ -96,15 +102,18 @@ func (s *Service) Get(shortID string) (string, bool, bool) {
 	return fullURL, false, true
 }
 
+// Ping ping storage
 func (s *Service) Ping() error {
 	return s.Storage.Ping()
 }
 
+// GetByUserID get links info from storage by userID
 func (s *Service) GetByUserID(userID string) ([]map[string]string, error) {
 	return s.Storage.GetByUserID(userID, s.BaseURL)
 }
 
-func (s *Service) DeleteURLsRep(userID string, shorURLs []string) error {
+// DeleteURLs delete links from storage
+func (s *Service) DeleteURLs(userID string, shorURLs []string) error {
 	resultChan := make(chan string)
 	updateChan := make(chan string, len(shorURLs))
 
@@ -126,11 +135,12 @@ func (s *Service) DeleteURLsRep(userID string, shorURLs []string) error {
 	return nil
 }
 
-func GetShortURL(longURL string) string {
-	splitURL := strings.Split(longURL, "://")
+// GetShortURL get short link from full
+func GetShortURL(fullURL string) string {
+	splitURL := strings.Split(fullURL, "://")
 	hash := sha1.New()
 	if len(splitURL) < 2 {
-		hash.Write([]byte(longURL))
+		hash.Write([]byte(fullURL))
 	} else {
 		hash.Write([]byte(splitURL[1]))
 	}

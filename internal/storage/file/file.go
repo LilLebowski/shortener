@@ -1,3 +1,4 @@
+// Package file contains methods for file storage
 package file
 
 import (
@@ -9,16 +10,12 @@ import (
 	"github.com/LilLebowski/shortener/internal/models"
 )
 
-type URLItem struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-	UserID      string `json:"user_id"`
-}
-
+// Storage file storage struct
 type Storage struct {
 	path string
 }
 
+// Init initialization for file storage
 func Init(filePath string) *Storage {
 	return &Storage{
 		path: filePath,
@@ -36,7 +33,7 @@ func (s *Storage) Set(full string, short string, userID string) error {
 		return fmt.Errorf("storage don't open to write! Error: %s. Path: %s", err, s.path)
 	}
 
-	item := URLItem{OriginalURL: full, ShortURL: short, UserID: userID}
+	item := models.UserURL{OriginalURL: full, ShortURL: short, UserID: userID}
 	data, err := json.Marshal(item)
 	if err != nil {
 		return fmt.Errorf("cannot encode storage item %s", err)
@@ -62,7 +59,7 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	}
 
 	for _, url := range urls {
-		item := URLItem{OriginalURL: url.OriginalURL, ShortURL: url.ShortURL, UserID: userID}
+		item := models.UserURL{OriginalURL: url.OriginalURL, ShortURL: url.ShortURL, UserID: userID}
 		data, err := json.Marshal(item)
 		if err != nil {
 			return fmt.Errorf("cannot encode storage item %s", err)
@@ -89,7 +86,7 @@ func (s *Storage) Get(short string) (string, error) {
 
 	r := bufio.NewReader(file)
 	line, e := readLine(r)
-	var item URLItem
+	var item models.UserURL
 	for e == nil {
 		err = json.Unmarshal([]byte(line), &item)
 		if err != nil {
@@ -112,7 +109,7 @@ func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]strin
 
 	r := bufio.NewReader(file)
 	line, e := readLine(r)
-	var item URLItem
+	var item models.UserURL
 	for e == nil {
 		err = json.Unmarshal([]byte(line), &item)
 		if err != nil {

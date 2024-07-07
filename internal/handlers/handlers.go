@@ -1,3 +1,4 @@
+// Package handlers include general handlers for shortener service
 package handlers
 
 import (
@@ -17,15 +18,18 @@ import (
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
+// HandlerWithService general type for handler
 type HandlerWithService struct {
 	service *shortener.Service
 	config  *config.Config
 }
 
+// Init for initialization new handler
 func Init(service *shortener.Service, c *config.Config) *HandlerWithService {
 	return &HandlerWithService{service: service, config: c}
 }
 
+// CreateShortURLHandler creates short link and saves it to the storage (plain text)
 func (srvc *HandlerWithService) CreateShortURLHandler(ctx *gin.Context) {
 	reqBody, err := io.ReadAll(ctx.Request.Body)
 	if err != nil {
@@ -59,6 +63,7 @@ func (srvc *HandlerWithService) CreateShortURLHandler(ctx *gin.Context) {
 	}
 }
 
+// GetShortURLHandler gets origin link from storage
 func (srvc *HandlerWithService) GetShortURLHandler(ctx *gin.Context) {
 	urlID := ctx.Param("urlID")
 	value, isDeleted, ok := srvc.service.Get(urlID)
@@ -76,6 +81,7 @@ func (srvc *HandlerWithService) GetShortURLHandler(ctx *gin.Context) {
 	}
 }
 
+// CreateShortURLHandlerJSON creates short link and saves it to the storage (application/json)
 func (srvc *HandlerWithService) CreateShortURLHandlerJSON(ctx *gin.Context) {
 	if ctx.Request.Header.Get("Content-Type") != "application/json" {
 		http.Error(ctx.Writer, "Invalid Content Type!", http.StatusBadRequest)
@@ -126,6 +132,7 @@ func (srvc *HandlerWithService) CreateShortURLHandlerJSON(ctx *gin.Context) {
 	}
 }
 
+// GetPingHandler pings storage
 func (srvc *HandlerWithService) GetPingHandler(ctx *gin.Context) {
 	err := srvc.service.Ping()
 	if err != nil {
@@ -136,6 +143,7 @@ func (srvc *HandlerWithService) GetPingHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, "")
 }
 
+// CreateBatch creates short link and saves it to the storage from array
 func (srvc *HandlerWithService) CreateBatch(ctx *gin.Context) {
 	var decoderBody []models.URLs
 	decoder := json.NewDecoder(ctx.Request.Body)
@@ -183,6 +191,7 @@ func (srvc *HandlerWithService) CreateBatch(ctx *gin.Context) {
 	ctx.Data(httpStatus, "application/json", respJSON)
 }
 
+// GetListByUserIDHandler gets all urls by user ID
 func (srvc *HandlerWithService) GetListByUserIDHandler(ctx *gin.Context) {
 	code := http.StatusOK
 	userIDFromContext, exists := ctx.Get("userID")
@@ -218,6 +227,7 @@ func (srvc *HandlerWithService) GetListByUserIDHandler(ctx *gin.Context) {
 	ctx.JSON(code, urls)
 }
 
+// DeleteUserUrlsHandler deletes user urls by array
 func (srvc *HandlerWithService) DeleteUserUrlsHandler(ctx *gin.Context) {
 	code := http.StatusAccepted
 	userIDFromContext, exists := ctx.Get("userID")
@@ -238,7 +248,7 @@ func (srvc *HandlerWithService) DeleteUserUrlsHandler(ctx *gin.Context) {
 		})
 	}
 
-	err := srvc.service.DeleteURLsRep(userID, shorURLs)
+	err := srvc.service.DeleteURLs(userID, shorURLs)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed delete to url",

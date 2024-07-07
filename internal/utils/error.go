@@ -1,7 +1,9 @@
+// Package utils contains errors
 package utils
 
 import "fmt"
 
+// UniqueConstraintError - error for UniqueConstraint
 type UniqueConstraintError struct {
 	Err error
 }
@@ -20,6 +22,7 @@ func NewUniqueConstraintError(err error) error {
 	}
 }
 
+// DeletedError - error for already deleted item
 type DeletedError struct {
 	Message string
 	Err     error
@@ -40,6 +43,7 @@ func NewDeletedError(msg string, err error) error {
 	}
 }
 
+// NotFoundError - error for not found item
 type NotFoundError struct {
 	Message string
 	Err     error

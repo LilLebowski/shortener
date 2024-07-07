@@ -1,3 +1,4 @@
+// Package middleware consist methods for parse http request
 package middleware
 
 import (
@@ -18,6 +19,7 @@ func (cw gzipWriter) Write(b []byte) (int, error) {
 	return cw.Writer.Write(b)
 }
 
+// Compression - middleware for compress and decompress zip data
 func Compression() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Header.Get("Content-Type") == "application/json" ||

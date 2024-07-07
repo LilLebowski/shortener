@@ -1,3 +1,4 @@
+// Package memory contains methods for memory storage
 package memory
 
 import (
@@ -7,15 +8,18 @@ import (
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
+// URLItem memory storage link info
 type URLItem struct {
 	OriginalURL string
 	UserID      string
 }
 
+// Storage memory storage struct
 type Storage struct {
 	URLs map[string]*URLItem
 }
 
+// Init initialization for memory storage
 func Init() *Storage {
 	return &Storage{
 		URLs: make(map[string]*URLItem),

@@ -1,3 +1,4 @@
+// Package db contains methods for database storage
 package db
 
 import (
@@ -17,10 +18,12 @@ import (
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
+// Storage postgresSQL storage struct
 type Storage struct {
 	db *sql.DB
 }
 
+// Init initialization for db storage
 func Init(db *sql.DB) (*Storage, error) {
 	err := createTable(db)
 	if err != nil {
