@@ -141,6 +141,49 @@ func TestCreateShortURLHandler(t *testing.T) {
 	}
 }
 
+func BenchmarkCreateShortURLHandler(b *testing.B) {
+	cfg := config.LoadConfiguration()
+	middleware.Initialize("debug")
+
+	userID := "bdf8817b-3225-4a46-9358-aa091b3cb478"
+	URL := "https://ya.ru"
+	short := shortener.GetShortURL(URL)
+	token, _ := buildJWTString(cfg, userID)
+
+	ctrl := gomock.NewController(b)
+	strg := mock_storage.NewMockRepository(ctrl)
+	s := &shortener.Service{
+		BaseURL: config.BaseURL,
+		Storage: strg,
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer() // stop all timers
+
+		param := strings.NewReader(URL)
+		rq := httptest.NewRequest(http.MethodPost, "/", param)
+		rw := httptest.NewRecorder()
+		newCookie := http.Cookie{Name: "userID", Value: token}
+		rq.Header.Add("Cookie", newCookie.String())
+
+		strg.
+			EXPECT().
+			Set(URL, short, userID).
+			Return(nil).
+			AnyTimes()
+
+		router := setupRouter(s, cfg)
+
+		b.StartTimer()
+		router.ServeHTTP(rw, rq)
+		res := rw.Result()
+		b.StopTimer()
+		defer res.Body.Close()
+	}
+}
+
 func TestCreateShortURLHandlerJSON(t *testing.T) {
 	cfg := config.LoadConfiguration()
 
@@ -229,6 +272,51 @@ func TestCreateShortURLHandlerJSON(t *testing.T) {
 	}
 }
 
+func BenchmarkCreateShortURLHandlerJSON(b *testing.B) {
+	cfg := config.LoadConfiguration()
+	middleware.Initialize("debug")
+
+	body := models.URLCreate{
+		URL: "https://ya.ru",
+	}
+	userID := "bdf8817b-3225-4a46-9358-aa091b3cb478"
+	short := shortener.GetShortURL("https://ya.ru")
+
+	ctrl := gomock.NewController(b)
+	strg := mock_storage.NewMockRepository(ctrl)
+	s := &shortener.Service{
+		BaseURL: config.BaseURL,
+		Storage: strg,
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer() // stop all timers
+		token, _ := buildJWTString(cfg, userID)
+		jsonBytes, _ := json.Marshal(body)
+		URL := strings.NewReader(string(jsonBytes))
+		rq := httptest.NewRequest(http.MethodPost, "/api/shorten", URL)
+		rw := httptest.NewRecorder()
+		newCookie := http.Cookie{Name: "userID", Value: token}
+		rq.Header.Set("Content-Type", "application/json")
+		rq.Header.Add("Cookie", newCookie.String())
+
+		strg.
+			EXPECT().
+			Set(body.URL, short, userID).
+			Return(nil).
+			AnyTimes()
+
+		b.StartTimer()
+		router := setupRouter(s, cfg)
+		router.ServeHTTP(rw, rq)
+		b.StopTimer()
+		res := rw.Result()
+		defer res.Body.Close()
+	}
+}
+
 func TestGetShortURLHandler(t *testing.T) {
 	cfg := config.LoadConfiguration()
 
@@ -307,6 +395,47 @@ func TestGetShortURLHandler(t *testing.T) {
 			defer res.Body.Close()
 			assert.Equal(t, test.want.code, res.StatusCode)
 		})
+	}
+}
+
+func BenchmarkGetShortURLHandler(b *testing.B) {
+	cfg := config.LoadConfiguration()
+	middleware.Initialize("debug")
+
+	userID := "bdf8817b-3225-4a46-9358-aa091b3cb478"
+	urlID := "found"
+	url := "https://ya.ru"
+	token, _ := buildJWTString(cfg, userID)
+
+	ctrl := gomock.NewController(b)
+	strg := mock_storage.NewMockRepository(ctrl)
+	s := &shortener.Service{
+		BaseURL: config.BaseURL,
+		Storage: strg,
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		rq := httptest.NewRequest(http.MethodGet, "/"+urlID, nil)
+		rw := httptest.NewRecorder()
+		newCookie := http.Cookie{Name: "userID", Value: token}
+		rq.Header.Set("Content-Type", "application/json")
+		rq.Header.Add("Cookie", newCookie.String())
+
+		strg.
+			EXPECT().
+			Get(urlID).
+			Return(url, nil).
+			AnyTimes()
+
+		router := setupRouter(s, cfg)
+
+		b.StartTimer()
+		router.ServeHTTP(rw, rq)
+		res := rw.Result()
+		b.StopTimer()
+		defer res.Body.Close()
 	}
 }
 
@@ -394,5 +523,68 @@ func TestCreateBatch(t *testing.T) {
 			assert.Equal(t, test.args.code, res.StatusCode)
 			assert.Equal(t, test.args.contentType, res.Header.Get("Content-Type"))
 		})
+	}
+}
+
+func BenchmarkShortenURLsHandlerJSON(b *testing.B) {
+	cfg := config.LoadConfiguration()
+	middleware.Initialize("debug")
+
+	mock := []models.FullURLs{
+		{
+			OriginalURL: "https://ya.ru",
+			ShortURL:    shortener.GetShortURL("https://ya.ru"),
+		},
+		{
+			OriginalURL: "https://ya.com",
+			ShortURL:    shortener.GetShortURL("https://ya.com"),
+		},
+	}
+	body := []models.URLs{
+		{
+			CorrelationID: "1",
+			OriginalURL:   "https://ya.ru",
+		},
+		{
+			CorrelationID: "2",
+			OriginalURL:   "https://ya.com",
+		},
+	}
+	userID := "bdf8817b-3225-4a46-9358-aa091b3cb478"
+	ctrl := gomock.NewController(b)
+	strg := mock_storage.NewMockRepository(ctrl)
+	s := &shortener.Service{
+		BaseURL: config.BaseURL,
+		Storage: strg,
+	}
+	token, _ := buildJWTString(cfg, userID)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer() // stop all timers
+		jsonBody, err := json.Marshal(body)
+		if err != nil {
+			b.Fatal(err)
+		}
+		rq := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(string(jsonBody)))
+		rw := httptest.NewRecorder()
+		newCookie := http.Cookie{Name: "userID", Value: token}
+		rq.Header.Set("Content-Type", "application/json")
+		rq.Header.Add("Cookie", newCookie.String())
+
+		strg.
+			EXPECT().
+			SetBatch(userID, mock).
+			Return(nil).
+			AnyTimes()
+
+		router := setupRouter(s, cfg)
+
+		b.StartTimer()
+		router.ServeHTTP(rw, rq)
+		res := rw.Result()
+		b.StopTimer()
+		defer res.Body.Close()
 	}
 }
