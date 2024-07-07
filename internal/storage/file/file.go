@@ -68,7 +68,7 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 			return fmt.Errorf("cannot encode storage item %s", err)
 		}
 		data = append(data, '\n')
-		_, err = file.Write(data)
+		file.Write(data)
 	}
 
 	defer func(file *os.File) {
