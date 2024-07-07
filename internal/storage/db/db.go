@@ -53,10 +53,13 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 
 	query := `
 		INSERT INTO url (short_id, original_url, user_id) 
-		VALUES (DEFAULT, $1, $2, $3);
+		VALUES ($1, $2, $3);
 	`
 
 	stmt, err := tx.PrepareContext(context.Background(), query)
+	if err != nil {
+		return err
+	}
 
 	defer func(stmt *sql.Stmt) {
 		err = stmt.Close()
