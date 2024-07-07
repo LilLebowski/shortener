@@ -22,10 +22,12 @@ func Init(filePath string) *Storage {
 	}
 }
 
+// Ping ping storage
 func (s *Storage) Ping() error {
 	return nil
 }
 
+// Set save link info to storage
 func (s *Storage) Set(full string, short string, userID string) error {
 	file, err := os.OpenFile(s.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 
@@ -51,6 +53,7 @@ func (s *Storage) Set(full string, short string, userID string) error {
 	return err
 }
 
+// SetBatch save batch links info to storage
 func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	file, err := os.OpenFile(s.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 
@@ -78,6 +81,7 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	return err
 }
 
+// Get get link info from storage
 func (s *Storage) Get(short string) (string, error) {
 	file, err := os.OpenFile(s.path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -100,6 +104,7 @@ func (s *Storage) Get(short string) (string, error) {
 	return "", nil
 }
 
+// GetByUserID get links info from storage by userID
 func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
 	urls := make([]map[string]string, 0)
 	file, err := os.OpenFile(s.path, os.O_RDONLY|os.O_CREATE, 0666)
@@ -125,6 +130,7 @@ func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]strin
 	return urls, nil
 }
 
+// Delete delete link from storage
 func (s *Storage) Delete(string, string, chan<- string) error {
 	return nil
 }

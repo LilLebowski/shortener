@@ -8,6 +8,7 @@ import (
 	"github.com/caarlos0/env"
 )
 
+// default config constants
 const (
 	ServerAddress = "localhost:8080"
 	BaseURL       = "http://localhost:8080"

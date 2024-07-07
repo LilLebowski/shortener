@@ -26,10 +26,12 @@ func Init() *Storage {
 	}
 }
 
+// Ping ping storage
 func (s *Storage) Ping() error {
 	return nil
 }
 
+// Set save link info to storage
 func (s *Storage) Set(full string, short string, userID string) error {
 	s.URLs[short] = &URLItem{
 		OriginalURL: full,
@@ -38,6 +40,7 @@ func (s *Storage) Set(full string, short string, userID string) error {
 	return nil
 }
 
+// SetBatch save batch links info to storage
 func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	for _, url := range urls {
 		s.URLs[url.ShortURL] = &URLItem{
@@ -48,6 +51,7 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	return nil
 }
 
+// Get get link info from storage
 func (s *Storage) Get(short string) (string, error) {
 	value, exists := s.URLs[short]
 	if exists {
@@ -56,6 +60,7 @@ func (s *Storage) Get(short string) (string, error) {
 	return "", utils.NewDeletedError("url is already deleted", nil)
 }
 
+// GetByUserID get links info from storage by userID
 func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
 	urls := make([]map[string]string, 0)
 	for shortID, item := range s.URLs {
@@ -68,6 +73,7 @@ func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]strin
 	return urls, nil
 }
 
+// Delete delete link from storage
 func (s *Storage) Delete(userID string, shortURL string, updateChan chan<- string) error {
 	return nil
 }

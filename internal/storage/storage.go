@@ -5,7 +5,7 @@ import "github.com/LilLebowski/shortener/internal/models"
 
 // Repository  interface for working with global repository
 type Repository interface {
-	// Ping ping db
+	// Ping ping storage
 	Ping() error
 	// Set save link info to storage
 	Set(full string, short string, userID string) error

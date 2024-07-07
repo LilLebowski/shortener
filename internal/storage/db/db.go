@@ -32,6 +32,7 @@ func Init(db *sql.DB) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
+// Set save link info to storage
 func (s *Storage) Set(full string, short string, userID string) error {
 	query := `
         INSERT INTO url (short_id, original_url, user_id) 
@@ -45,6 +46,7 @@ func (s *Storage) Set(full string, short string, userID string) error {
 	return err
 }
 
+// SetBatch save batch links info to storage
 func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -85,6 +87,7 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	return nil
 }
 
+// Get get link info from storage
 func (s *Storage) Get(short string) (string, error) {
 	query := `
         SELECT original_url, is_deleted
@@ -108,6 +111,7 @@ func (s *Storage) Get(short string) (string, error) {
 	return originalURL, nil
 }
 
+// GetByUserID get links info from storage by userID
 func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
 	urls := make([]map[string]string, 0)
 	query := `SELECT original_url, short_id FROM url WHERE user_id=$1 AND is_deleted=false;`
@@ -136,6 +140,7 @@ func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]strin
 	return urls, nil
 }
 
+// Delete delete link from storage
 func (s *Storage) Delete(userID string, shortURL string, updateChan chan<- string) error {
 	query := `
 		UPDATE url
@@ -150,6 +155,7 @@ func (s *Storage) Delete(userID string, shortURL string, updateChan chan<- strin
 	return nil
 }
 
+// Ping ping db
 func (s *Storage) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
