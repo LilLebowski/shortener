@@ -1,3 +1,4 @@
+// Package middleware implement constructor and configs for logger object
 package middleware
 
 import (
@@ -7,8 +8,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// Log - logger instance
 var Log *zap.SugaredLogger
 
+// Initialize for initialization new logger
 func Initialize(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -24,6 +27,7 @@ func Initialize(level string) error {
 	return nil
 }
 
+// Logger - middleware for logger
 func Logger(logger *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()

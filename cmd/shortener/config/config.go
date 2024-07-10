@@ -1,3 +1,4 @@
+// Package config implement functions for environment and project configs
 package config
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/caarlos0/env"
 )
 
+// default config constants
 const (
 	ServerAddress = "localhost:8080"
 	BaseURL       = "http://localhost:8080"
@@ -17,6 +19,7 @@ const (
 	SecretKey     = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 )
 
+// Config struct for environment
 type Config struct {
 	ServerAddress string `env:"SERVER_ADDRESS"`
 	BaseURL       string `env:"BASE_URL"`
@@ -28,6 +31,7 @@ type Config struct {
 	SecretKey   string
 }
 
+// LoadConfiguration loads config from flags or .env file
 func LoadConfiguration() *Config {
 	cfg := Config{
 		TokenExpire: TokenExpire,

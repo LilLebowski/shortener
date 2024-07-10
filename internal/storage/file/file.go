@@ -1,3 +1,4 @@
+// Package file contains methods for file storage
 package file
 
 import (
@@ -5,34 +6,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/LilLebowski/shortener/internal/models"
 )
 
-type URLItem struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-	UserID      string `json:"user_id"`
+// Storage file storage struct
+type Storage struct {
+	path string
 }
 
-type Store struct {
-	isConfigured bool
-	path         string
-}
-
-func Init(filePath string) *Store {
-	return &Store{
-		isConfigured: filePath != "",
-		path:         filePath,
+// Init initialization for file storage
+func Init(filePath string) *Storage {
+	return &Storage{
+		path: filePath,
 	}
 }
 
-func (s *Store) Set(full string, short string, userID string) error {
+// Ping ping storage
+func (s *Storage) Ping() error {
+	return nil
+}
+
+// Set save link info to storage
+func (s *Storage) Set(full string, short string, userID string) error {
 	file, err := os.OpenFile(s.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 
 	if err != nil {
 		return fmt.Errorf("storage don't open to write! Error: %s. Path: %s", err, s.path)
 	}
 
-	item := URLItem{OriginalURL: full, ShortURL: short, UserID: userID}
+	item := models.UserURL{OriginalURL: full, ShortURL: short, UserID: userID}
 	data, err := json.Marshal(item)
 	if err != nil {
 		return fmt.Errorf("cannot encode storage item %s", err)
@@ -50,7 +53,36 @@ func (s *Store) Set(full string, short string, userID string) error {
 	return err
 }
 
-func (s *Store) Get(short string) (string, error) {
+// SetBatch save batch links info to storage
+func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
+	file, err := os.OpenFile(s.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+
+	if err != nil {
+		return fmt.Errorf("storage don't open to write! Error: %s. Path: %s", err, s.path)
+	}
+
+	for _, url := range urls {
+		item := models.UserURL{OriginalURL: url.OriginalURL, ShortURL: url.ShortURL, UserID: userID}
+		data, err := json.Marshal(item)
+		if err != nil {
+			return fmt.Errorf("cannot encode storage item %s", err)
+		}
+		data = append(data, '\n')
+		file.Write(data)
+	}
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
+
+	return err
+}
+
+// Get get link info from storage
+func (s *Storage) Get(short string) (string, error) {
 	file, err := os.OpenFile(s.path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return "", fmt.Errorf("storage don't open to read! Error: %s. Path: %s", err, s.path)
@@ -58,7 +90,7 @@ func (s *Store) Get(short string) (string, error) {
 
 	r := bufio.NewReader(file)
 	line, e := readLine(r)
-	var item URLItem
+	var item models.UserURL
 	for e == nil {
 		err = json.Unmarshal([]byte(line), &item)
 		if err != nil {
@@ -72,7 +104,8 @@ func (s *Store) Get(short string) (string, error) {
 	return "", nil
 }
 
-func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
+// GetByUserID get links info from storage by userID
+func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
 	urls := make([]map[string]string, 0)
 	file, err := os.OpenFile(s.path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -81,7 +114,7 @@ func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string,
 
 	r := bufio.NewReader(file)
 	line, e := readLine(r)
-	var item URLItem
+	var item models.UserURL
 	for e == nil {
 		err = json.Unmarshal([]byte(line), &item)
 		if err != nil {
@@ -97,8 +130,9 @@ func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string,
 	return urls, nil
 }
 
-func (s *Store) IsConfigured() bool {
-	return s.isConfigured
+// Delete delete link from storage
+func (s *Storage) Delete(string, string, chan<- string) error {
+	return nil
 }
 
 func readLine(r *bufio.Reader) (string, error) {

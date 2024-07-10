@@ -1,3 +1,4 @@
+// Package db contains methods for database storage
 package db
 
 import (
@@ -5,6 +6,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/LilLebowski/shortener/internal/middleware"
+	"github.com/LilLebowski/shortener/internal/models"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/jackc/pgconn"
@@ -14,33 +18,22 @@ import (
 	"github.com/LilLebowski/shortener/internal/utils"
 )
 
-type Store struct {
-	isConfigured bool
-	db           *sql.DB
+// Storage postgresSQL storage struct
+type Storage struct {
+	db *sql.DB
 }
 
-func Init(databasePath string) (*Store, error) {
-	db, err := sql.Open("pgx", databasePath)
-	dbStore := &Store{
-		isConfigured: databasePath != "",
-	}
+// Init initialization for db storage
+func Init(db *sql.DB) (*Storage, error) {
+	err := createTable(db)
 	if err != nil {
-		dbStore.isConfigured = false
-		return dbStore, fmt.Errorf("error opening db: %w", err)
+		return nil, fmt.Errorf("error create table db: %w", err)
 	}
-
-	err = createTable(db)
-	if err != nil {
-		dbStore.isConfigured = false
-		return dbStore, fmt.Errorf("error create table db: %w", err)
-	}
-
-	dbStore.db = db
-
-	return dbStore, nil
+	return &Storage{db: db}, nil
 }
 
-func (s *Store) Set(full string, short string, userID string) error {
+// Set save link info to storage
+func (s *Storage) Set(full string, short string, userID string) error {
 	query := `
         INSERT INTO url (short_id, original_url, user_id) 
         VALUES ($1, $2, $3)
@@ -53,27 +46,73 @@ func (s *Store) Set(full string, short string, userID string) error {
 	return err
 }
 
-func (s *Store) Get(short string) (string, bool, error) {
+// SetBatch save batch links info to storage
+func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func(tx *sql.Tx) {
+		_ = tx.Rollback()
+	}(tx)
+
+	query := `
+		INSERT INTO url (short_id, original_url, user_id) 
+		VALUES ($1, $2, $3);
+	`
+
+	stmt, err := tx.PrepareContext(context.Background(), query)
+	if err != nil {
+		return err
+	}
+
+	defer func(stmt *sql.Stmt) {
+		err = stmt.Close()
+		if err != nil {
+			middleware.Log.Info("Close statement error", zap.Error(err))
+		}
+	}(stmt)
+
+	for _, v := range urls {
+		_, err = stmt.ExecContext(context.Background(), v.ShortURL, v.OriginalURL, userID)
+		var e *pgconn.PgError
+		if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation {
+			return utils.NewUniqueConstraintError(err)
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Get get link info from storage
+func (s *Storage) Get(short string) (string, error) {
 	query := `
         SELECT original_url, is_deleted
         FROM url 
         WHERE short_id = $1
     `
-
 	var originalURL string
 	var isDeleted bool
 	err := s.db.QueryRow(query, short).Scan(&originalURL, &isDeleted)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", false, err
+			return "", utils.NewNotFoundError("url not found", err)
 		}
-		return "", false, err
+		return "", err
 	}
 
-	return originalURL, isDeleted, err
+	if isDeleted {
+		return "", utils.NewDeletedError("url is already deleted", err)
+	}
+
+	return originalURL, nil
 }
 
-func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
+// GetByUserID get links info from storage by userID
+func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]string, error) {
 	urls := make([]map[string]string, 0)
 	query := `SELECT original_url, short_id FROM url WHERE user_id=$1 AND is_deleted=false;`
 	rows, err := s.db.Query(query, userID)
@@ -101,7 +140,8 @@ func (s *Store) GetByUserID(userID string, baseURL string) ([]map[string]string,
 	return urls, nil
 }
 
-func (s *Store) Delete(userID string, shortURL string, updateChan chan<- string) error {
+// Delete delete link from storage
+func (s *Storage) Delete(userID string, shortURL string, updateChan chan<- string) error {
 	query := `
 		UPDATE url
 		SET is_deleted = true
@@ -115,7 +155,8 @@ func (s *Store) Delete(userID string, shortURL string, updateChan chan<- string)
 	return nil
 }
 
-func (s *Store) Ping() error {
+// Ping ping db
+func (s *Storage) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
@@ -123,10 +164,6 @@ func (s *Store) Ping() error {
 		return fmt.Errorf("pinging db-store: %w", err)
 	}
 	return nil
-}
-
-func (s *Store) IsConfigured() bool {
-	return s.isConfigured
 }
 
 func createTable(db *sql.DB) error {

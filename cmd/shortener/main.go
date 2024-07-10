@@ -10,9 +10,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/LilLebowski/shortener/cmd/shortener/config"
-	"github.com/LilLebowski/shortener/internal/handlers"
 	"github.com/LilLebowski/shortener/internal/middleware"
-	"github.com/LilLebowski/shortener/internal/storage"
+	"github.com/LilLebowski/shortener/internal/router"
 )
 
 func main() {
@@ -24,14 +23,12 @@ func main() {
 		panic(err)
 	}
 
-	storageInstance := storage.Init(cfg.FilePath, cfg.DBPath)
-
-	handler := handlers.SetupRouter(cfg, storageInstance)
+	routerInstance := router.Init(cfg)
 
 	middleware.Log.Info("Running server", zap.String("address", cfg.ServerAddress))
 	server := &http.Server{
 		Addr:    cfg.ServerAddress,
-		Handler: handler,
+		Handler: routerInstance,
 	}
 
 	go func() {
