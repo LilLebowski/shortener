@@ -44,9 +44,9 @@ func (s *Storage) Set(full string, short string, userID string) error {
 	_, err = file.Write(data)
 
 	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			panic(err)
+		errClose := file.Close()
+		if errClose != nil {
+			panic(errClose)
 		}
 	}(file)
 
@@ -63,18 +63,18 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 
 	for _, url := range urls {
 		item := models.UserURL{OriginalURL: url.OriginalURL, ShortURL: url.ShortURL, UserID: userID}
-		data, err := json.Marshal(item)
-		if err != nil {
-			return fmt.Errorf("cannot encode storage item %s", err)
+		data, errMarshal := json.Marshal(item)
+		if errMarshal != nil {
+			return fmt.Errorf("cannot encode storage item %s", errMarshal)
 		}
 		data = append(data, '\n')
 		file.Write(data)
 	}
 
 	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			panic(err)
+		errClose := file.Close()
+		if errClose != nil {
+			panic(errClose)
 		}
 	}(file)
 
