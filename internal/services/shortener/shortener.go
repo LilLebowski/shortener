@@ -42,7 +42,9 @@ func Init(config *config.Config) *Service {
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else if config.FilePath != "" {
+		return s
+	}
+	if config.FilePath != "" {
 		s.Storage = fs.Init(config.FilePath)
 	} else {
 		s.Storage = ms.Init()

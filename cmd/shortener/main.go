@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +15,16 @@ import (
 	"github.com/LilLebowski/shortener/internal/router"
 )
 
+// Global variables
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
+	logBuildInfo()
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cfg := config.LoadConfiguration()
@@ -47,4 +57,23 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// logBuildInfo print info about package
+func logBuildInfo() {
+	if buildVersion == "" {
+		buildVersion = "N/A"
+	}
+
+	if buildDate == "" {
+		buildDate = "N/A"
+	}
+
+	if buildCommit == "" {
+		buildCommit = "N/A"
+	}
+
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 }
