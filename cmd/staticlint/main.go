@@ -21,18 +21,28 @@ import (
 	"github.com/gostaticanalysis/nilerr"
 )
 
-// ConfigData describe config data
-type ConfigData struct {
+// StaticCheckConfig describe config data
+type StaticCheckConfig struct {
 	Staticcheck []string
 	Stylecheck  []string
 }
 
 func main() {
-	cfg := ConfigData{
+	cfg := StaticCheckConfig{
 		Staticcheck: []string{"SA"},
 		Stylecheck:  []string{"ST1000", "ST1005"},
 	}
 
+	checks := prepareChecks(cfg)
+
+	fmt.Println("Run static checks:\n", checks)
+
+	multichecker.Main(
+		checks...,
+	)
+}
+
+func prepareChecks(cfg StaticCheckConfig) []*analysis.Analyzer {
 	checks := []*analysis.Analyzer{
 		osexitanalyzer.Analyzer,
 		printf.Analyzer,
@@ -57,10 +67,5 @@ func main() {
 			}
 		}
 	}
-
-	fmt.Println("Run static checks:\n", checks)
-
-	multichecker.Main(
-		checks...,
-	)
+	return checks
 }

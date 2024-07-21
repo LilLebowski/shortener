@@ -47,7 +47,7 @@ func Compression() gin.HandlerFunc {
 			defer func(compressReader *gzip.Reader) {
 				errClose := compressReader.Close()
 				if errClose != nil {
-					panic(errClose)
+					Log.Error("error: close compress: %d", errClose)
 				}
 			}(compressReader)
 

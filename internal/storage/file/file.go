@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/LilLebowski/shortener/internal/middleware"
 	"github.com/LilLebowski/shortener/internal/models"
 )
 
@@ -46,7 +47,7 @@ func (s *Storage) Set(full string, short string, userID string) error {
 	defer func(file *os.File) {
 		errClose := file.Close()
 		if errClose != nil {
-			panic(errClose)
+			middleware.Log.Error("error: close file: %d", errClose)
 		}
 	}(file)
 
@@ -74,7 +75,7 @@ func (s *Storage) SetBatch(userID string, urls []models.FullURLs) error {
 	defer func(file *os.File) {
 		errClose := file.Close()
 		if errClose != nil {
-			panic(errClose)
+			middleware.Log.Error("error: close file: %d", errClose)
 		}
 	}(file)
 
