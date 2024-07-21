@@ -166,6 +166,11 @@ func (s *Storage) Ping() error {
 	return nil
 }
 
+func (s *Storage) Close() error {
+	err := s.db.Close()
+	return err
+}
+
 func createTable(db *sql.DB) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS url (
