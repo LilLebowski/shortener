@@ -78,6 +78,7 @@ func (s *Storage) Delete(userID string, shortURL string, updateChan chan<- strin
 	return nil
 }
 
+// Close for closing connection
 func (s *Storage) Close() error {
 	return nil
 }
