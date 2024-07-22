@@ -136,6 +136,11 @@ func (s *Storage) Delete(string, string, chan<- string) error {
 	return nil
 }
 
+// Close for closing connection
+func (s *Storage) Close() error {
+	return nil
+}
+
 func readLine(r *bufio.Reader) (string, error) {
 	var (
 		isPrefix       = true

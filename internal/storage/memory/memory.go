@@ -77,3 +77,8 @@ func (s *Storage) GetByUserID(userID string, baseURL string) ([]map[string]strin
 func (s *Storage) Delete(userID string, shortURL string, updateChan chan<- string) error {
 	return nil
 }
+
+// Close for closing connection
+func (s *Storage) Close() error {
+	return nil
+}

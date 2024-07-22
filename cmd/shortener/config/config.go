@@ -2,7 +2,12 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/caarlos0/env"
@@ -17,6 +22,7 @@ const (
 	DBPath        = ""
 	TokenExpire   = time.Hour * 24
 	SecretKey     = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+	EnableHTTPS   = ""
 )
 
 // Config struct for environment
@@ -26,9 +32,19 @@ type Config struct {
 	LogLevel      string `env:"FLAG_LOG_LEVEL"`
 	FilePath      string `env:"FILE_STORAGE_PATH"`
 	DBPath        string `env:"DATABASE_DSN"`
+	EnableHTTPS   string `env:"ENABLE_HTTPS" envDefault:""`
 
 	TokenExpire time.Duration
 	SecretKey   string
+}
+
+// JSONConfig for json config
+type JSONConfig struct {
+	BaseURL       string `json:"base_url"`
+	ServerAddress string `json:"server_address"`
+	FilePath      string `json:"file_storage_path"`
+	DBPath        string `json:"database_dsn"`
+	EnableHTTPS   string `json:"enable_https"`
 }
 
 // LoadConfiguration loads config from flags or .env file
@@ -43,6 +59,7 @@ func LoadConfiguration() *Config {
 	regStringVar(&cfg.LogLevel, "c", LogLevel, "Server log level")
 	regStringVar(&cfg.FilePath, "f", FileName, "Server file storage")
 	regStringVar(&cfg.DBPath, "d", DBPath, "Server db path")
+	regStringVar(&cfg.EnableHTTPS, "s", EnableHTTPS, "Enable https")
 
 	flag.Parse()
 
@@ -50,6 +67,7 @@ func LoadConfiguration() *Config {
 	flagBaseURL := getStringFlag("b")
 	flagFilePath := getStringFlag("f")
 	flagDataBaseURI := getStringFlag("d")
+	flagEnableHTTPS := getStringFlag("s")
 
 	err := env.Parse(&cfg)
 
@@ -69,6 +87,29 @@ func LoadConfiguration() *Config {
 	if flagDataBaseURI != DBPath {
 		cfg.DBPath = flagDataBaseURI
 	}
+	if flagEnableHTTPS != EnableHTTPS {
+		cfg.EnableHTTPS = flagEnableHTTPS
+	}
+
+	configJSON, err := getJSONConfig()
+	if err != nil {
+		return &cfg
+	}
+	if configJSON.ServerAddress != ServerAddress {
+		cfg.ServerAddress = flagServerAddress
+	}
+	if configJSON.BaseURL != BaseURL {
+		cfg.BaseURL = flagBaseURL
+	}
+	if configJSON.FilePath != FileName {
+		cfg.FilePath = flagFilePath
+	}
+	if configJSON.DBPath != DBPath {
+		cfg.DBPath = flagDataBaseURI
+	}
+	if configJSON.EnableHTTPS != EnableHTTPS {
+		cfg.EnableHTTPS = flagEnableHTTPS
+	}
 
 	return &cfg
 }
@@ -81,4 +122,29 @@ func regStringVar(p *string, name string, value string, usage string) {
 
 func getStringFlag(name string) string {
 	return flag.Lookup(name).Value.(flag.Getter).Get().(string)
+}
+
+func getJSONConfig() (JSONConfig, error) {
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	exPath := filepath.Dir(ex)
+	fmt.Println(exPath)
+	var config JSONConfig
+	jsonFile, errOpen := os.Open("/shortener/config/env.json")
+	if errOpen != nil {
+		fmt.Println(errOpen)
+		return config, errOpen
+	}
+	defer jsonFile.Close()
+	byteValue, errRead := io.ReadAll(jsonFile)
+	if errRead != nil {
+		return config, errRead
+	}
+	errUnmarshal := json.Unmarshal(byteValue, &config)
+	if errUnmarshal != nil {
+		return config, errRead
+	}
+	return config, nil
 }
