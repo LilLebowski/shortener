@@ -17,6 +17,7 @@ const (
 	DBPath        = ""
 	TokenExpire   = time.Hour * 24
 	SecretKey     = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+	EnableHTTPS   = ""
 )
 
 // Config struct for environment
@@ -26,6 +27,7 @@ type Config struct {
 	LogLevel      string `env:"FLAG_LOG_LEVEL"`
 	FilePath      string `env:"FILE_STORAGE_PATH"`
 	DBPath        string `env:"DATABASE_DSN"`
+	EnableHTTPS   string `env:"ENABLE_HTTPS" envDefault:""`
 
 	TokenExpire time.Duration
 	SecretKey   string
@@ -43,6 +45,7 @@ func LoadConfiguration() *Config {
 	regStringVar(&cfg.LogLevel, "c", LogLevel, "Server log level")
 	regStringVar(&cfg.FilePath, "f", FileName, "Server file storage")
 	regStringVar(&cfg.DBPath, "d", DBPath, "Server db path")
+	regStringVar(&cfg.EnableHTTPS, "s", EnableHTTPS, "Enable https")
 
 	flag.Parse()
 
@@ -50,6 +53,7 @@ func LoadConfiguration() *Config {
 	flagBaseURL := getStringFlag("b")
 	flagFilePath := getStringFlag("f")
 	flagDataBaseURI := getStringFlag("d")
+	flagEnableHTTPS := getStringFlag("s")
 
 	err := env.Parse(&cfg)
 
@@ -68,6 +72,9 @@ func LoadConfiguration() *Config {
 	}
 	if flagDataBaseURI != DBPath {
 		cfg.DBPath = flagDataBaseURI
+	}
+	if flagEnableHTTPS != EnableHTTPS {
+		cfg.EnableHTTPS = flagEnableHTTPS
 	}
 
 	return &cfg

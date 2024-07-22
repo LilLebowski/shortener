@@ -11,7 +11,7 @@ import (
 )
 
 // Init define routes
-func Init(config *config.Config) *gin.Engine {
+func Init(config *config.Config) (*gin.Engine, *shortener.Service) {
 	shortenerService := shortener.Init(config)
 	handlerWithService := handlers.Init(shortenerService, config)
 
@@ -39,5 +39,5 @@ func Init(config *config.Config) *gin.Engine {
 
 	router.HandleMethodNotAllowed = true
 
-	return router
+	return router, shortenerService
 }
