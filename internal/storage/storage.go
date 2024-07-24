@@ -17,4 +17,6 @@ type Repository interface {
 	GetByUserID(userID string, baseURL string) ([]map[string]string, error)
 	// Delete delete link from storage
 	Delete(userID string, shortURL string, updateChan chan<- string) error
+	// Close for closing connection
+	Close() error
 }
