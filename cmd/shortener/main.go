@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/LilLebowski/shortener/internal/services/shortener"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 	"github.com/LilLebowski/shortener/cmd/shortener/config"
 	"github.com/LilLebowski/shortener/internal/middleware"
 	"github.com/LilLebowski/shortener/internal/router"
+	"github.com/LilLebowski/shortener/internal/services/shortener"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
@@ -38,19 +38,25 @@ func main() {
 
 	middleware.Log.Info("Running server", zap.String("address", cfg.ServerAddress))
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+	defer stop()
 
 	if cfg.EnableHTTPS == "" {
-		srv := startHTTPServer(cfg, routerInstance)
-		shutDownServer(ctx, cfg, srv, service)
+		srv := startHTTPServer(cfg, routerInstance, stop)
+		releaseResources(ctx, cfg, srv, service)
 	} else {
-		srv := startHTTPSServer(cfg, routerInstance)
-		shutDownServer(ctx, cfg, srv, service)
+		srv := startHTTPSServer(cfg, routerInstance, stop)
+		releaseResources(ctx, cfg, srv, service)
 	}
 }
 
 // startHTTPSServer run HTTPS server
-func startHTTPSServer(c *config.Config, r *gin.Engine) *http.Server {
+func startHTTPSServer(c *config.Config, r *gin.Engine, stop context.CancelFunc) *http.Server {
 	manager := &autocert.Manager{
 		Cache:      autocert.DirCache("cache-dir"),
 		Prompt:     autocert.AcceptTOS,
@@ -67,7 +73,7 @@ func startHTTPSServer(c *config.Config, r *gin.Engine) *http.Server {
 		err := srv.ListenAndServeTLS("server.crt", "server.key")
 		if err != nil {
 			middleware.Log.Info("app error exit", zap.Error(err))
-			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+			stop()
 		}
 	}()
 
@@ -77,7 +83,7 @@ func startHTTPSServer(c *config.Config, r *gin.Engine) *http.Server {
 }
 
 // startHTTPServer run HTTP server
-func startHTTPServer(c *config.Config, r *gin.Engine) *http.Server {
+func startHTTPServer(c *config.Config, r *gin.Engine, stop context.CancelFunc) *http.Server {
 	srv := &http.Server{
 		Addr:    c.ServerAddress,
 		Handler: r,
@@ -87,7 +93,7 @@ func startHTTPServer(c *config.Config, r *gin.Engine) *http.Server {
 		err := srv.ListenAndServe()
 		if err != nil {
 			middleware.Log.Info("app error exit", zap.Error(err))
-			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+			stop()
 		}
 	}()
 
@@ -96,24 +102,13 @@ func startHTTPServer(c *config.Config, r *gin.Engine) *http.Server {
 	return srv
 }
 
-// shutDownServer exit for server
-func shutDownServer(ctx context.Context, c *config.Config, srv *http.Server, sh *shortener.Service) {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-
-	killSignal := <-interrupt
-	switch killSignal {
-	case os.Interrupt:
-		middleware.Log.Info("Got SIGINT...")
-	case syscall.SIGTERM:
-		middleware.Log.Info("Got SIGTERM...")
-	}
-
-	releaseResources(ctx, c, srv, sh)
-}
-
 // releaseResources free resources
 func releaseResources(ctx context.Context, c *config.Config, srv *http.Server, sh *shortener.Service) {
+	<-ctx.Done()
+	if ctx.Err() != nil {
+		fmt.Printf("Error:%v\n", ctx.Err())
+	}
+
 	middleware.Log.Info("The service is shutting down...")
 	if c.DBPath != "" {
 		middleware.Log.Info("Closing connect to db")
